@@ -37,23 +37,24 @@ export async function POST(request: NextRequest) {
         });
         const hasPhoto = n.photo_url ? " 📷" : "";
         const content = n.text ?? "(sin texto)";
-        return `[${i + 1}] ${date}${hasPhoto} — ${content}`;
+        return `[${i + 1}] ${date}${hasPhoto}\n${content}`;
       })
-      .join("\n");
+      .join("\n\n");
 
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 250,
-      system: `Eres un asistente amable dentro de Little Minder, una app para personas con ADHD.
-Ayudas al usuario a encontrar información en sus notas mentales.
-Responde de forma cálida, conversacional y muy breve (máximo 2 oraciones).
-Si encuentras información relevante, cítala naturalmente.
-Si no hay nada relevante, dilo con dulzura, sin dramatizar.
-Responde en el mismo idioma de la pregunta.`,
+      max_tokens: 400,
+      system: `Eres un asistente dentro de Little Minder, una app para personas con ADHD.
+Tu única tarea es buscar en las notas del usuario y responder su pregunta.
+Busca de forma flexible: coincidencias parciales, sinónimos, ideas relacionadas — no solo palabras exactas.
+Si una nota menciona algo relacionado con la pregunta aunque sea indirectamente, inclúyela.
+Cita el texto relevante de las notas directamente en tu respuesta.
+Responde breve (máximo 3 oraciones), cálido y en el mismo idioma de la pregunta.
+Si genuinamente no hay nada relacionado, dilo con una sola oración corta.`,
       messages: [
         {
           role: "user",
-          content: `Mis notas:\n${notesText || "(todavía no tienes notas)"}\n\nPregunta: ${query}`,
+          content: `Mis notas (${notes.length} en total):\n\n${notesText || "(sin notas)"}\n\nPregunta: ${query}`,
         },
       ],
     });
