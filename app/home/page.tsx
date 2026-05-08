@@ -11,8 +11,35 @@ import AddThingySheet from "@/components/AddThingySheet";
 import ProofModal from "@/components/ProofModal";
 import MicButton from "@/components/MicButton";
 import MindNoteCard from "@/components/MindNoteCard";
-import SmartMindModal from "@/components/SmartMindModal";
 import { Thingy, EnergyLevel, isNearDeadline, isPastDeadline } from "@/lib/missions";
+
+// ── Mind Note inline recording ────────────────────────────────────────────────
+
+type MindPhase = "idle" | "recording" | "loading" | "saved" | "answer";
+
+function getMindMimeType(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+  return types.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
+}
+
+function detectMindIntent(text: string): "save" | "search" {
+  const lower = text.toLowerCase();
+  const searchWords = [
+    "dónde", "donde", "cuándo", "cuando", "qué tengo", "que tengo",
+    "busca", "encuentra", "hay algo", "tengo apuntado", "cuántos", "cuantos",
+    "recuerdas", "qué dijiste", "que dijiste", "qué hay", "que hay",
+  ];
+  const saveWords = [
+    "guarda", "recuerda", "anota", "apunta", "agrega", "añade",
+    "nota que", "guárdame", "recuérdame", "pon que", "quiero guardar",
+  ];
+  if (saveWords.some((w) => lower.includes(w))) return "save";
+  if (searchWords.some((w) => lower.includes(w))) return "search";
+  return "save";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
   const router = useRouter();
@@ -24,30 +51,118 @@ export default function HomePage() {
   const [sheetPrefill, setSheetPrefill] = useState("");
   const [proofTarget, setProofTarget] = useState<Thingy | null>(null);
   const [showDone, setShowDone] = useState(false);
-  const [showSmartModal, setShowSmartModal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Mark as mounted so SSR and initial client render match (both return null)
+  // Mind note inline state
+  const [mindPhase, setMindPhase] = useState<MindPhase>("idle");
+  const [mindAnswer, setMindAnswer] = useState("");
+  const [mindSavedText, setMindSavedText] = useState("");
+  const mindRecorderRef = useRef<MediaRecorder | null>(null);
+  const mindChunksRef = useRef<Blob[]>([]);
+
   useEffect(() => setMounted(true), []);
 
-  // Redirect if no energy selected this session
   useEffect(() => {
     if (!mounted || !isLoaded) return;
     if (!sessionStorage.getItem("lm_session")) router.replace("/");
   }, [mounted, isLoaded, router]);
 
-  const sortPriority = (t: Thingy): number => {
-    if (isNearDeadline(t.deadline) || isPastDeadline(t.deadline)) return 0; // deadline urgente
-    if (t.deadline) return 1;                                                // cualquier deadline
-    if (t.energyLevel === energy) return 2;                                  // coincide energía
-    if (t.isDaily) return 3;                                                 // daily sin deadline
-    return 4;                                                                // todo lo demás
+  // ── Mind note processing ────────────────────────────────────────────────────
+
+  const processMindTranscript = async (transcript: string) => {
+    const intent = detectMindIntent(transcript);
+
+    if (intent === "save") {
+      await addNote(transcript);
+      setMindSavedText(transcript);
+      setMindPhase("saved");
+      setTimeout(() => setMindPhase("idle"), 3000);
+      return;
+    }
+
+    setMindPhase("loading");
+    try {
+      const res = await fetch("/api/mind-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: transcript,
+          notes: notes.map((n) => ({ text: n.text, photo_url: n.photo_url, created_at: n.created_at })),
+        }),
+      });
+      const data = (await res.json()) as { answer?: string };
+      setMindAnswer(data.answer ?? "No encontré nada 🐱");
+      setMindPhase("answer");
+    } catch {
+      setMindPhase("idle");
+    }
   };
 
-  const pending = thingys
-    .filter((t) => !t.completed)
-    .sort((a, b) => sortPriority(a) - sortPriority(b));
+  const handleMindNotePress = () => {
+    if (mindPhase === "recording") {
+      mindRecorderRef.current?.stop();
+      return;
+    }
+    if (mindPhase !== "idle") return;
 
+    void navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((stream) => {
+        const mimeType = getMindMimeType();
+        const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+        mindRecorderRef.current = recorder;
+        mindChunksRef.current = [];
+
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) mindChunksRef.current.push(e.data);
+        };
+
+        recorder.onstop = () => {
+          stream.getTracks().forEach((t) => t.stop());
+          const blob = new Blob(mindChunksRef.current, { type: mimeType || "audio/mp4" });
+          mindChunksRef.current = [];
+          mindRecorderRef.current = null;
+
+          if (blob.size < 1000) { setMindPhase("idle"); return; }
+
+          const ext = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : "webm";
+          setMindPhase("loading");
+
+          const form = new FormData();
+          form.append("audio", blob, `recording.${ext}`);
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 25_000);
+
+          fetch("/api/transcribe-note", { method: "POST", body: form, signal: controller.signal })
+            .then((r) => r.json() as Promise<{ text?: string }>)
+            .then(({ text }) => {
+              clearTimeout(timeout);
+              if (text?.trim()) {
+                void processMindTranscript(text.trim());
+              } else {
+                setMindPhase("idle");
+              }
+            })
+            .catch(() => { clearTimeout(timeout); setMindPhase("idle"); });
+        };
+
+        recorder.start();
+        setMindPhase("recording");
+      })
+      .catch(() => setMindPhase("idle"));
+  };
+
+  // ── Thingy handlers ─────────────────────────────────────────────────────────
+
+  const sortPriority = (t: Thingy): number => {
+    if (isNearDeadline(t.deadline) || isPastDeadline(t.deadline)) return 0;
+    if (t.deadline) return 1;
+    if (t.energyLevel === energy) return 2;
+    if (t.isDaily) return 3;
+    return 4;
+  };
+
+  const pending = thingys.filter((t) => !t.completed).sort((a, b) => sortPriority(a) - sortPriority(b));
   const done = thingys.filter((t) => t.completed);
 
   const handleVoiceTranscription = (text: string) => {
@@ -72,11 +187,8 @@ export default function HomePage() {
   };
 
   const handleComplete = (thingy: Thingy) => {
-    if (thingy.requirePhotoProof) {
-      setProofTarget(thingy);
-    } else {
-      completeThingy(thingy.id);
-    }
+    if (thingy.requirePhotoProof) setProofTarget(thingy);
+    else completeThingy(thingy.id);
   };
 
   const handleProofComplete = (msg?: string) => {
@@ -89,15 +201,12 @@ export default function HomePage() {
     const t = thingys.find((x) => x.id === id);
     if (!t) return;
     updateThingy(id, {
-      completed: false,
-      progress: 0,
-      completedAt: undefined,
+      completed: false, progress: 0, completedAt: undefined,
       lastCompletedDate: undefined,
       chunks: t.chunks.map((c) => ({ ...c, completed: false })),
     });
   };
 
-  // Both server and initial client render return null — eliminates hydration mismatch
   if (!mounted || !isLoaded) return null;
 
   return (
@@ -110,9 +219,9 @@ export default function HomePage() {
         </header>
 
         {/* Two main action buttons */}
-        <section className="px-5 pb-5">
+        <section className="px-5 pb-4">
           <div className="flex gap-3">
-            {/* NEW THINGY — moss green, contains MicButton for voice + tap for sheet */}
+            {/* NEW THINGY — moss green */}
             <div className="flex-1 bg-[#6B8F71] rounded-2xl shadow-sm flex items-center overflow-hidden min-h-[60px]">
               <div className="pl-3 pr-1 py-3 shrink-0">
                 <MicButton onTranscription={handleVoiceTranscription} />
@@ -126,20 +235,84 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* MIND NOTE — lavender, opens smart modal */}
+            {/* MIND NOTE — lavender, records immediately on tap */}
             <button
-              onClick={() => setShowSmartModal(true)}
-              className="flex-1 bg-[#C9B8E8] rounded-2xl px-4 flex items-center gap-3 min-h-[60px] shadow-sm active:scale-[0.98] transition-all duration-150"
+              onClick={handleMindNotePress}
+              disabled={mindPhase === "loading"}
+              className={`flex-1 rounded-2xl px-4 flex items-center gap-3 min-h-[60px] shadow-sm transition-all duration-150
+                ${mindPhase === "recording"
+                  ? "bg-rose-soft scale-[1.02]"
+                  : mindPhase === "loading"
+                  ? "bg-cream-dark"
+                  : mindPhase === "saved"
+                  ? "bg-[#6B8F71]/20"
+                  : "bg-[#C9B8E8] active:scale-[0.98]"
+                }`}
             >
-              <span className="w-9 h-9 bg-white/30 rounded-xl flex items-center justify-center shrink-0">
-                <MicIconSmall />
-              </span>
-              <div className="text-left">
-                <p className="text-sm font-semibold text-carbon leading-tight">mind note</p>
-                <p className="text-[11px] text-carbon/55 leading-tight">guarda o pregunta</p>
-              </div>
+              {mindPhase === "idle" && (
+                <>
+                  <span className="w-9 h-9 bg-white/30 rounded-xl flex items-center justify-center shrink-0">
+                    <MicIconSmall />
+                  </span>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-carbon leading-tight">mind note</p>
+                    <p className="text-[11px] text-carbon/55 leading-tight">toca para dictar</p>
+                  </div>
+                </>
+              )}
+              {mindPhase === "recording" && (
+                <>
+                  <span className="w-3 h-3 bg-red-500 rounded-sm shrink-0 animate-pulse" />
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-carbon leading-tight">grabando...</p>
+                    <p className="text-[11px] text-carbon/55 leading-tight">toca para detener</p>
+                  </div>
+                </>
+              )}
+              {mindPhase === "loading" && (
+                <>
+                  <span className="w-4 h-4 border-2 border-carbon/30 border-t-carbon/70 rounded-full animate-spin shrink-0" />
+                  <p className="text-sm text-carbon/60">procesando...</p>
+                </>
+              )}
+              {mindPhase === "saved" && (
+                <>
+                  <span className="text-lg shrink-0">🐱</span>
+                  <p className="text-sm font-semibold text-[#6B8F71] leading-tight">guardado</p>
+                </>
+              )}
+              {mindPhase === "answer" && (
+                <>
+                  <span className="text-lg shrink-0">🐱</span>
+                  <p className="text-sm font-semibold text-carbon leading-tight">respuesta lista</p>
+                </>
+              )}
             </button>
           </div>
+
+          {/* Saved confirmation */}
+          {mindPhase === "saved" && mindSavedText && (
+            <div className="mt-2 bg-white rounded-2xl px-4 py-3 shadow-sm">
+              <p className="text-xs text-carbon/50 mb-1">guardado 🐱</p>
+              <p className="text-sm text-carbon leading-relaxed">{mindSavedText}</p>
+            </div>
+          )}
+
+          {/* AI answer */}
+          {mindPhase === "answer" && mindAnswer && (
+            <div className="mt-2 bg-lavender-light rounded-2xl px-4 py-3 shadow-sm">
+              <div className="flex gap-2 mb-2">
+                <span className="shrink-0">🐱</span>
+                <p className="text-sm text-carbon leading-relaxed">{mindAnswer}</p>
+              </div>
+              <button
+                onClick={() => { setMindPhase("idle"); setMindAnswer(""); }}
+                className="text-xs text-carbon/40 underline"
+              >
+                cerrar
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Pending thingys */}
@@ -149,21 +322,14 @@ export default function HomePage() {
               my thingys · {pending.length}
             </p>
           )}
-
           {pending.length === 0 && done.length === 0 && (
             <div className="text-center py-8">
               <p className="text-sm text-carbon-soft/50">no thingys yet</p>
               <p className="text-xs text-carbon-soft/35 mt-1">speak or type one above</p>
             </div>
           )}
-
           {pending.map((t) => (
-            <ThingyCard
-              key={t.id}
-              thingy={t}
-              onUpdate={updateThingy}
-              onComplete={handleComplete}
-            />
+            <ThingyCard key={t.id} thingy={t} onUpdate={updateThingy} onComplete={handleComplete} />
           ))}
         </section>
 
@@ -177,22 +343,19 @@ export default function HomePage() {
               <span>done · {done.length}</span>
               <span className="text-[10px] mt-px">{showDone ? "▲" : "▼"}</span>
             </button>
-
             {showDone && (
               <div>
                 {done.map((t) => (
                   <ThingyCard
-                    key={t.id}
-                    thingy={t}
-                    onUpdate={updateThingy}
-                    onComplete={() => {}}
-                    onDoAgain={handleDoAgain}
+                    key={t.id} thingy={t} onUpdate={updateThingy}
+                    onComplete={() => {}} onDoAgain={handleDoAgain}
                   />
                 ))}
               </div>
             )}
           </section>
         )}
+
         {/* Mind Notes — always visible */}
         <section className="px-5 mb-6">
           <p className="text-xs font-semibold text-carbon-soft/50 uppercase tracking-wider mb-3">
@@ -237,15 +400,6 @@ export default function HomePage() {
           thingy={proofTarget}
           onComplete={handleProofComplete}
           onSkip={() => { completeThingy(proofTarget!.id); setProofTarget(null); }}
-        />
-      )}
-
-      {/* Smart mind modal — detects save vs search intent */}
-      {showSmartModal && (
-        <SmartMindModal
-          onSave={addNote}
-          notes={notes}
-          onClose={() => setShowSmartModal(false)}
         />
       )}
     </>
