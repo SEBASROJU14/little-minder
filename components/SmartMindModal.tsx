@@ -33,17 +33,20 @@ export default function SmartMindModal({ onSave, notes, onClose }: Props) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [answer, setAnswer] = useState("");
   const [text, setText] = useState("");
+  const [savedText, setSavedText] = useState("");
 
   const process = async (transcript: string) => {
     const intent = detectIntent(transcript);
 
     if (intent === "save") {
       await onSave(transcript);
+      setSavedText(transcript);
       setPhase("saved");
-      setTimeout(onClose, 1400);
+      setTimeout(onClose, 3000);
       return;
     }
 
+    console.log(`[SmartMindModal] searching — notes available: ${notes.length}`);
     setPhase("searching");
     try {
       const res = await fetch("/api/mind-search", {
@@ -125,11 +128,16 @@ export default function SmartMindModal({ onSave, notes, onClose }: Props) {
         )}
 
         {phase === "saved" && (
-          <div className="flex flex-col items-center gap-3 py-10">
+          <div className="flex flex-col items-center gap-4 py-6">
             <div className="w-12 h-12 bg-moss/10 rounded-full flex items-center justify-center">
               <CheckIcon />
             </div>
-            <p className="text-sm font-semibold text-carbon">nota guardada</p>
+            <p className="text-sm font-semibold text-carbon">guardado 🐱</p>
+            {savedText && (
+              <div className="w-full bg-white rounded-2xl px-4 py-3 shadow-sm">
+                <p className="text-sm text-carbon/70 leading-relaxed">{savedText}</p>
+              </div>
+            )}
           </div>
         )}
 

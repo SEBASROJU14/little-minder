@@ -7,6 +7,8 @@ interface NotePayload {
   created_at: string;
 }
 
+export const maxDuration = 30;
+
 export async function POST(request: NextRequest) {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   try {
@@ -17,6 +19,13 @@ export async function POST(request: NextRequest) {
 
     if (!query) {
       return NextResponse.json({ error: "No query" }, { status: 400 });
+    }
+
+    console.log(`[mind-search] query: "${query}" | notes received: ${notes?.length ?? 0}`);
+    if (notes?.length) {
+      notes.forEach((n, i) =>
+        console.log(`  [${i + 1}] ${n.created_at} — ${String(n.text).slice(0, 80)}`)
+      );
     }
 
     const notesText = notes
