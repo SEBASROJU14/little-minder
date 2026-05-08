@@ -99,7 +99,7 @@ export function MindNotesProvider({ children }: { children: ReactNode }) {
       console.error("Insert mind note error:", error.message, error.code, error.details);
       // Rollback optimistic note and show error
       setNotes((prev) => prev.filter((n) => n.id !== tempId));
-      setSaveError(`Error al guardar: ${error.message}`);
+      setSaveError("Error al guardar, intenta de nuevo");
       return;
     }
 
