@@ -29,7 +29,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const notesText = notes
+    const sortedNotes = [...(notes ?? [])].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    const notesText = sortedNotes
       .map((n, i) => {
         const date = new Date(n.created_at).toLocaleDateString("es-MX", {
           day: "numeric",
@@ -50,11 +54,12 @@ Busca de forma flexible: coincidencias parciales, sinónimos, ideas relacionadas
 Si una nota menciona algo relacionado con la pregunta aunque sea indirectamente, inclúyela.
 Cita el texto relevante de las notas directamente en tu respuesta.
 Responde breve (máximo 3 oraciones), cálido y en el mismo idioma de la pregunta.
+Si hay varias notas sobre el mismo tema, usa la más reciente.
 Si genuinamente no hay nada relacionado, dilo con una sola oración corta.`,
       messages: [
         {
           role: "user",
-          content: `Mis notas (${notes.length} en total):\n\n${notesText || "(sin notas)"}\n\nPregunta: ${query}`,
+          content: `Mis notas (${sortedNotes.length} en total, más reciente primero):\n\n${notesText || "(sin notas)"}\n\nPregunta: ${query}`,
         },
       ],
     });
