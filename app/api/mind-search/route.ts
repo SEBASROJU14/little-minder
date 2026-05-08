@@ -9,6 +9,8 @@ interface NotePayload {
 export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
+  console.log("[mind-search] ANTHROPIC_API_KEY exists:", !!process.env.ANTHROPIC_API_KEY);
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.error("[mind-search] ANTHROPIC_API_KEY is not set");
@@ -20,6 +22,9 @@ export async function POST(request: NextRequest) {
       query: string;
       notes: NotePayload[];
     };
+
+    console.log("[mind-search] query:", query);
+    console.log("[mind-search] notes received:", notes?.length);
 
     if (!query) {
       return NextResponse.json({ error: "No query" }, { status: 400 });
