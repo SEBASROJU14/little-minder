@@ -87,7 +87,9 @@ export default function HomePage() {
     try {
       const currentNotes = notesRef.current;
       const sortedNotes = [...currentNotes].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      console.log("[mind-search client] notes at search time:", sortedNotes.length, sortedNotes.map((n) => n.text?.slice(0, 30)));
+      console.log("[mind-search client] notes count:", sortedNotes.length);
+      console.log("[mind-search client] created_at values (sorted):", sortedNotes.map((n) => n.created_at));
+      console.log("[mind-search client] texts (sorted):", sortedNotes.map((n) => n.text?.slice(0, 40)));
       const res = await fetch("/api/mind-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
