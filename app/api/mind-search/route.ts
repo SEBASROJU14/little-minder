@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
       max_tokens: 400,
       system: `Eres un asistente dentro de Little Minder, una app para personas con ADHD.
 Tu única tarea es buscar en las notas del usuario y responder su pregunta.
+Las notas están ordenadas de más reciente a más antigua. Prioriza siempre la más reciente sobre el mismo tema.
 Busca de forma flexible: coincidencias parciales, sinónimos, ideas relacionadas — no solo palabras exactas.
 Si una nota menciona algo relacionado con la pregunta aunque sea indirectamente, inclúyela.
 Cita el texto relevante de las notas directamente en tu respuesta.

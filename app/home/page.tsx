@@ -86,13 +86,14 @@ export default function HomePage() {
     setMindPhase("loading");
     try {
       const currentNotes = notesRef.current;
-      console.log("[mind-search client] notes at search time:", currentNotes.length, currentNotes.map((n) => n.text?.slice(0, 30)));
+      const sortedNotes = [...currentNotes].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      console.log("[mind-search client] notes at search time:", sortedNotes.length, sortedNotes.map((n) => n.text?.slice(0, 30)));
       const res = await fetch("/api/mind-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: transcript,
-          notes: currentNotes.map((n) => ({ text: n.text, photo_url: n.photo_url, created_at: n.created_at })),
+          notes: sortedNotes.map((n) => ({ text: n.text, photo_url: n.photo_url, created_at: n.created_at })),
         }),
       });
       const data = (await res.json()) as { answer?: string };
