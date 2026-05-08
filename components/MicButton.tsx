@@ -11,38 +11,34 @@ interface Props {
 
 type RecordingState = "idle" | "recording" | "loading" | "error";
 
+function getSupportedMimeType(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+  return types.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
+}
+
 export default function MicButton({ onTranscription, disabled, endpoint = "/api/transcribe", size = "md" }: Props) {
   const [state, setState] = useState<RecordingState>("idle");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const startRecording = () => {
+    void navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((stream) => {
+        const mimeType = getSupportedMimeType();
+        const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+        mediaRecorderRef.current = mediaRecorder;
+        chunksRef.current = [];
 
-      // Don't force a mimeType — let the browser pick its native format.
-      // On iOS Safari this produces audio/mp4; on desktop audio/webm.
-      // Forcing an unsupported mimeType throws NotSupportedError on iOS.
-      let mediaRecorder: MediaRecorder;
-      try {
-        mediaRecorder = new MediaRecorder(stream);
-      } catch {
-        setState("error");
-        setTimeout(() => setState("idle"), 2000);
-        return;
-      }
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunksRef.current.push(e.data);
+        };
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
+        mediaRecorder.onstop = () => {
+          stream.getTracks().forEach((t) => t.stop());
 
-      mediaRecorder.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
-
-        const mimeType = mediaRecorder.mimeType; // read after recording, not before
-        const blob = new Blob(chunksRef.current, { type: mimeType || "audio/mp4" });
+          const blob = new Blob(chunksRef.current, { type: mimeType || "audio/mp4" });
         chunksRef.current = [];
 
         console.log("[MicButton] onstop — mimeType:", mimeType, "size:", blob.size);
@@ -90,11 +86,12 @@ export default function MicButton({ onTranscription, disabled, endpoint = "/api/
 
       mediaRecorder.start();
       setState("recording");
-    } catch (err) {
+    })
+    .catch((err: unknown) => {
       console.error("[MicButton] getUserMedia error:", err);
       setState("error");
       setTimeout(() => setState("idle"), 2000);
-    }
+    });
   };
 
   const stopRecording = () => mediaRecorderRef.current?.stop();
