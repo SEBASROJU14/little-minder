@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-jakarta, "Plus Jakarta Sans", sans-serif);
+
+  --color-cream: #fafaf8;
+  --color-cream-dark: #f0efe8;
+  --color-lavender: #c9b8e8;
+  --color-lavender-light: #e8e0f5;
+  --color-lavender-dark: #a89ac8;
+  --color-moss: #6b8f71;
+  --color-moss-light: #d4e6d6;
+  --color-moss-dark: #4a6b50;
+  --color-carbon: #2d2d2d;
+  --color-carbon-soft: #5d5d5d;
+  --color-rose-soft: #f5d4d4;
+  --color-amber-soft: #fef3c7;
+  --color-amber-800: #92400e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #fafaf8;
+  color: #2d2d2d;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+/* Prevent iOS bounce */
+html {
+  overflow: hidden;
+  height: 100%;
+}
+
+body {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: color, background-color, border-color, opacity, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Remove transition from animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes xpFill {
+  from { width: 0%; }
+  to { width: var(--xp-width); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease forwards;
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Tap highlight */
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes deadlineGlow {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(251,191,36,0.5), 0 1px 4px rgba(0,0,0,0.07); }
+  50%       { box-shadow: 0 0 0 4px rgba(251,191,36,0.25), 0 1px 4px rgba(0,0,0,0.07); }
+}
+
+.animate-deadline-glow {
+  animation: deadlineGlow 2.5s ease-in-out infinite;
+}

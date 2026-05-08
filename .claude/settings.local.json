@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp \"/Users/sebastianromero/Downloads/ChatGPT Image 7 may 2026, 12_31_44 p.m..png\" ~/Desktop/little-minder/public/logo.png)",
+      "Bash(cp \"/Users/sebastianromero/Downloads/ChatGPT Image 7 may 2026, 12_31_37 p.m..png\" ~/Desktop/little-minder/public/cat.png)",
+      "Bash(mkdir -p ~/Desktop/little-minder/public)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/home)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/create)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/home)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/create)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/api/transcribe)",
+      "Bash(open *)",
+      "Bash(curl *)",
+      "Bash(npm show *)",
+      "Bash(node -e \"const v=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const arr=JSON.parse\\(v\\); console.log\\(arr.slice\\(-5\\).join\\('\\\\n'\\)\\)\")",
+      "Bash(rm -f ~/Desktop/little-minder/public/workbox-*.js ~/Desktop/little-minder/public/swe-worker-*.js)",
+      "Bash(npm uninstall *)",
+      "Bash(pkill -f \"next dev\")",
+      "Read(//tmp/**)",
+      "Bash(npx tsc *)",
+      "Bash(npm list *)",
+      "Bash(xargs kill *)",
+      "Bash(kill -9 74940)",
+      "Bash(python3 -m json.tool)",
+      "Bash(gh auth *)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}

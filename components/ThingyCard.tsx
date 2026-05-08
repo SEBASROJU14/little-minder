@@ -1,0 +1,295 @@
+"use client";
+
+import { useState } from "react";
+import { Thingy, Chunk, EnergyLevel, isNearDeadline, isPastDeadline, formatDeadline, calcChunkProgress } from "@/lib/missions";
+import ProgressCircle from "./ProgressCircle";
+import EnergyPill from "./EnergyPill";
+
+interface Props {
+  thingy: Thingy;
+  onUpdate: (id: string, updates: Partial<Thingy>) => void;
+  onComplete: (thingy: Thingy) => void;
+  onDoAgain?: (id: string) => void;
+}
+
+const todayStr = () => new Date().toISOString().split("T")[0];
+
+export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: Props) {
+  const { id, text, energyLevel, completed, progress, isDaily, requirePhotoProof,
+    proofMessage, deadline, chunksEnabled, chunks } = thingy;
+
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [newChunkText, setNewChunkText] = useState("");
+
+  const nearDeadline = isNearDeadline(deadline);
+  const pastDeadline = isPastDeadline(deadline);
+
+  // When chunks are active, progress is computed; otherwise manual
+  const displayProgress = chunksEnabled && chunks.length > 0
+    ? calcChunkProgress(chunks)
+    : progress;
+
+  // --- progress handlers ---
+
+  const handleManualProgress = (next: number) => {
+    if (chunksEnabled) return; // locked when chunks active
+    if (next === 100) {
+      onComplete(thingy);
+    } else {
+      onUpdate(id, { progress: next });
+    }
+  };
+
+  // --- chunk handlers ---
+
+  const handleChunkToggle = (chunkId: string) => {
+    if (completed) return;
+    const updated = chunks.map((c) =>
+      c.id === chunkId ? { ...c, completed: !c.completed } : c
+    );
+    const newProgress = calcChunkProgress(updated);
+    onUpdate(id, { chunks: updated, progress: newProgress });
+    if (newProgress === 100) {
+      setTimeout(() => onComplete({ ...thingy, chunks: updated, progress: 100 }), 350);
+    }
+  };
+
+  const handleAddChunk = () => {
+    const trimmed = newChunkText.trim();
+    if (!trimmed || chunks.length >= 10) return;
+    const newChunk: Chunk = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      text: trimmed,
+      completed: false,
+    };
+    onUpdate(id, { chunks: [...chunks, newChunk] });
+    setNewChunkText("");
+  };
+
+  const handleToggleChunks = () => {
+    if (completed) return;
+    const enabling = !chunksEnabled;
+    onUpdate(id, {
+      chunksEnabled: enabling,
+      chunks: enabling ? chunks : [],
+      progress: enabling ? calcChunkProgress(chunks) : 0,
+    });
+  };
+
+  // --- attribute handlers ---
+
+  const toggleDaily = () => onUpdate(id, { isDaily: !isDaily });
+  const togglePhoto = () => onUpdate(id, { requirePhotoProof: !requirePhotoProof });
+
+  const handleDeadlineTap = () => {
+    if (deadline) {
+      onUpdate(id, { deadline: undefined });
+      setShowDatePicker(false);
+    } else {
+      setShowDatePicker((v) => !v);
+    }
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val) {
+      onUpdate(id, { deadline: val });
+      setShowDatePicker(false);
+    }
+  };
+
+  return (
+    <div
+      className="bg-white rounded-2xl px-4 py-3 shadow-sm mb-2 animate-fade-in"
+      style={
+        nearDeadline
+          ? { boxShadow: "0 0 0 2px rgba(251,191,36,0.5), 0 1px 4px rgba(0,0,0,0.07)" }
+          : pastDeadline && !completed
+          ? { boxShadow: "0 0 0 2px rgba(239,68,68,0.25), 0 1px 4px rgba(0,0,0,0.07)" }
+          : undefined
+      }
+    >
+      <div className="flex items-start gap-3">
+        {/* Progress circle — read-only when chunks active */}
+        <div className="mt-0.5">
+          <ProgressCircle
+            progress={displayProgress}
+            onProgress={completed || chunksEnabled ? undefined : handleManualProgress}
+            readonly={completed || chunksEnabled}
+            size={44}
+          />
+        </div>
+
+        {/* Main content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start gap-2">
+            <p className={`text-sm font-medium leading-snug flex-1 ${completed ? "line-through text-carbon-soft/60" : "text-carbon"}`}>
+              {text}
+            </p>
+            <EnergyPill level={energyLevel as EnergyLevel} />
+          </div>
+
+          {proofMessage && (
+            <p className="text-xs text-moss italic mt-1">{proofMessage}</p>
+          )}
+
+          {/* Attribute pills */}
+          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+            <AttributePill
+              active={isDaily}
+              activeStyle="bg-amber-soft text-amber-700"
+              inactiveStyle="text-carbon-soft/35"
+              onClick={toggleDaily}
+              label={isDaily ? "♻ daily" : "♻"}
+              title="toggle daily"
+            />
+            <AttributePill
+              active={!!deadline}
+              activeStyle={
+                nearDeadline ? "bg-amber-200 text-amber-800" :
+                pastDeadline ? "bg-rose-soft text-rose-700" :
+                "bg-cream-dark text-carbon-soft"
+              }
+              inactiveStyle="text-carbon-soft/35"
+              onClick={handleDeadlineTap}
+              label={deadline ? `🔔 ${formatDeadline(deadline)}` : "🔔"}
+              title={deadline ? "tap to remove deadline" : "tap to set deadline"}
+            />
+            <AttributePill
+              active={requirePhotoProof}
+              activeStyle="bg-lavender-light text-lavender-dark"
+              inactiveStyle="text-carbon-soft/35"
+              onClick={togglePhoto}
+              label={requirePhotoProof ? "📷 on" : "📷"}
+              title="toggle photo proof"
+            />
+            {!completed && (
+              <AttributePill
+                active={chunksEnabled}
+                activeStyle="bg-lavender-light text-lavender-dark"
+                inactiveStyle="text-carbon-soft/35"
+                onClick={handleToggleChunks}
+                label={chunksEnabled ? `≡ ${chunks.filter(c=>c.completed).length}/${chunks.length}` : "≡"}
+                title="toggle steps/chunks"
+              />
+            )}
+          </div>
+
+          {/* Inline date picker */}
+          {showDatePicker && (
+            <input
+              type="date"
+              min={todayStr()}
+              autoFocus
+              onChange={handleDateChange}
+              className="mt-2 bg-cream-dark rounded-xl px-3 py-1.5 text-xs text-carbon outline-none border-none w-full"
+              onBlur={() => setShowDatePicker(false)}
+            />
+          )}
+
+          {/* Chunks section */}
+          {chunksEnabled && (
+            <div className="mt-3 pt-3 border-t border-cream-dark/80">
+              {chunks.length === 0 && (
+                <p className="text-xs text-carbon-soft/40 mb-2">add steps below</p>
+              )}
+
+              {chunks.map((chunk) => (
+                <div key={chunk.id} className="flex items-center gap-2 py-1.5">
+                  <button
+                    onClick={() => handleChunkToggle(chunk.id)}
+                    disabled={completed}
+                    className={`
+                      w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center
+                      transition-all duration-200 active:scale-90
+                      ${chunk.completed
+                        ? "bg-moss border-moss"
+                        : "border-carbon-soft/30 bg-white"}
+                    `}
+                  >
+                    {chunk.completed && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <polyline
+                          points="2,5 4,7.5 8,2.5"
+                          stroke="white"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                  <span
+                    className={`text-xs flex-1 transition-all duration-200 leading-snug
+                      ${chunk.completed ? "line-through text-carbon-soft/40" : "text-carbon"}`}
+                  >
+                    {chunk.text}
+                  </span>
+                </div>
+              ))}
+
+              {/* Add chunk input */}
+              {!completed && chunks.length < 10 && (
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    value={newChunkText}
+                    onChange={(e) => setNewChunkText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddChunk()}
+                    placeholder="add a step…"
+                    className="flex-1 text-xs bg-cream-dark rounded-xl px-3 py-2 outline-none text-carbon placeholder:text-carbon-soft/35 border-none"
+                  />
+                  <button
+                    onClick={handleAddChunk}
+                    disabled={!newChunkText.trim()}
+                    className="w-7 h-7 rounded-full bg-carbon text-white text-base font-light flex items-center justify-center shrink-0 disabled:opacity-25 active:scale-95 transition-transform duration-100"
+                  >
+                    +
+                  </button>
+                </div>
+              )}
+
+              {chunks.length === 10 && (
+                <p className="text-[10px] text-carbon-soft/35 mt-1">max 10 steps</p>
+              )}
+            </div>
+          )}
+
+          {/* Do again button — only for completed thingys */}
+          {completed && onDoAgain && (
+            <button
+              onClick={() => onDoAgain(id)}
+              className="mt-2 text-[11px] text-carbon-soft/50 underline underline-offset-2 active:opacity-60 transition-opacity"
+            >
+              do again
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AttributePill({
+  active, activeStyle, inactiveStyle, onClick, label, title,
+}: {
+  active: boolean;
+  activeStyle: string;
+  inactiveStyle: string;
+  onClick: () => void;
+  label: string;
+  title: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`
+        inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium
+        transition-all duration-150 active:scale-95
+        ${active ? activeStyle : inactiveStyle}
+      `}
+    >
+      {label}
+    </button>
+  );
+}
