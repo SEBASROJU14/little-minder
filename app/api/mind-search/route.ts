@@ -46,10 +46,10 @@ export async function POST(request: NextRequest) {
       max_tokens: 400,
       system: `Eres un asistente dentro de Little Minder, una app para personas con ADHD.
 Tu única tarea es buscar en las notas del usuario y responder su pregunta.
-Las notas están ordenadas de más reciente a más antigua. Prioriza siempre la más reciente sobre el mismo tema.
+Las notas están ordenadas de MÁS RECIENTE a MÁS ANTIGUA. La nota [1] es SIEMPRE la más reciente.
+Cuando el usuario pregunte sobre algo, responde ÚNICAMENTE con la información de la nota más reciente que sea relevante. IGNORA las notas más antiguas sobre el mismo tema.
 Busca de forma flexible: coincidencias parciales, sinónimos, ideas relacionadas — no solo palabras exactas.
-Si una nota menciona algo relacionado con la pregunta aunque sea indirectamente, inclúyela.
-Cita el texto relevante de las notas directamente en tu respuesta.
+Cita el texto relevante de la nota más reciente directamente en tu respuesta.
 Responde breve (máximo 3 oraciones), cálido y en el mismo idioma de la pregunta.
 Si genuinamente no hay nada relacionado, dilo con una sola oración corta.`,
       messages: [
