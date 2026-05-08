@@ -5,11 +5,13 @@ import { useState, useRef } from "react";
 interface Props {
   onTranscription: (text: string) => void;
   disabled?: boolean;
+  endpoint?: string;
+  size?: "md" | "lg";
 }
 
 type RecordingState = "idle" | "recording" | "loading" | "error";
 
-export default function MicButton({ onTranscription, disabled }: Props) {
+export default function MicButton({ onTranscription, disabled, endpoint = "/api/transcribe", size = "md" }: Props) {
   const [state, setState] = useState<RecordingState>("idle");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -35,7 +37,7 @@ export default function MicButton({ onTranscription, disabled }: Props) {
         try {
           const formData = new FormData();
           formData.append("audio", blob, "recording.webm");
-          const res = await fetch("/api/transcribe", { method: "POST", body: formData });
+          const res = await fetch(endpoint, { method: "POST", body: formData });
           const data = await res.json();
           if (data.text) onTranscription(data.text);
           else setState("error");
@@ -63,13 +65,15 @@ export default function MicButton({ onTranscription, disabled }: Props) {
     else if (state === "recording") stopRecording();
   };
 
+  const sizeClass = size === "lg" ? "w-20 h-20 text-3xl" : "w-14 h-14 text-xl";
+
   return (
     <button
       type="button"
       onClick={handlePress}
       disabled={disabled || state === "loading"}
       className={`
-        w-14 h-14 rounded-full flex items-center justify-center text-xl
+        ${sizeClass} rounded-full flex items-center justify-center
         shadow-sm transition-all duration-200 active:scale-95 shrink-0
         ${state === "recording"
           ? "bg-rose-soft scale-110 shadow-md"
