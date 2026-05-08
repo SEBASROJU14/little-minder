@@ -19,9 +19,18 @@ export default function MicButton({ onTranscription, disabled, endpoint = "/api/
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4",
-      });
+
+      // Don't force a mimeType — let the browser pick its native format.
+      // On iOS Safari this produces audio/mp4; on desktop audio/webm.
+      // Forcing an unsupported mimeType throws NotSupportedError on iOS.
+      let mediaRecorder: MediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream);
+      } catch {
+        setState("error");
+        setTimeout(() => setState("idle"), 2000);
+        return;
+      }
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -29,36 +38,66 @@ export default function MicButton({ onTranscription, disabled, endpoint = "/api/
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
-      mediaRecorder.onstop = async () => {
+      mediaRecorder.onstop = () => {
         stream.getTracks().forEach((t) => t.stop());
-        setState("loading");
-        const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType });
 
-        try {
-          const formData = new FormData();
-          formData.append("audio", blob, "recording.webm");
-          const res = await fetch(endpoint, { method: "POST", body: formData });
-          const data = await res.json();
-          if (data.text) onTranscription(data.text);
-          else setState("error");
-        } catch {
+        const mimeType = mediaRecorder.mimeType; // read after recording, not before
+        const blob = new Blob(chunksRef.current, { type: mimeType || "audio/mp4" });
+        chunksRef.current = [];
+
+        console.log("[MicButton] onstop — mimeType:", mimeType, "size:", blob.size);
+
+        if (blob.size < 1000) {
+          console.warn("[MicButton] blob too small, skipping");
           setState("error");
-        } finally {
-          setState("idle");
+          setTimeout(() => setState("idle"), 2000);
+          return;
         }
+
+        // Derive extension from actual mimeType so Whisper can decode the container.
+        // iOS records audio/mp4 → must send as .m4a (not .webm).
+        const ext = mimeType.includes("mp4") || mimeType.includes("m4a") || mimeType === ""
+          ? "m4a"
+          : mimeType.includes("ogg") ? "ogg"
+          : "webm";
+
+        setState("loading");
+        const form = new FormData();
+        form.append("audio", blob, `recording.${ext}`);
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 25_000);
+
+        fetch(endpoint, { method: "POST", body: form, signal: controller.signal })
+          .then((r) => {
+            clearTimeout(timeout);
+            return r.json() as Promise<{ text?: string; error?: string }>;
+          })
+          .then(({ text }) => {
+            if (text?.trim()) {
+              onTranscription(text.trim());
+            } else {
+              setState("error");
+            }
+          })
+          .catch((err: Error) => {
+            clearTimeout(timeout);
+            console.error("[MicButton] fetch error:", err.name === "AbortError" ? "timeout" : err.message);
+            setState("error");
+          })
+          .finally(() => setState("idle"));
       };
 
       mediaRecorder.start();
       setState("recording");
-    } catch {
+    } catch (err) {
+      console.error("[MicButton] getUserMedia error:", err);
       setState("error");
       setTimeout(() => setState("idle"), 2000);
     }
   };
 
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-  };
+  const stopRecording = () => mediaRecorderRef.current?.stop();
 
   const handlePress = () => {
     if (state === "idle") startRecording();
@@ -99,7 +138,8 @@ export default function MicButton({ onTranscription, disabled, endpoint = "/api/
 
 function MicIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" />
       <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
       <line x1="12" y1="19" x2="12" y2="22" />
