@@ -11,8 +11,7 @@ import AddThingySheet from "@/components/AddThingySheet";
 import ProofModal from "@/components/ProofModal";
 import MicButton from "@/components/MicButton";
 import MindNoteCard from "@/components/MindNoteCard";
-import MindNoteModal from "@/components/MindNoteModal";
-import MindSearchModal from "@/components/MindSearchModal";
+import SmartMindModal from "@/components/SmartMindModal";
 import { Thingy, EnergyLevel, isNearDeadline, isPastDeadline } from "@/lib/missions";
 
 export default function HomePage() {
@@ -25,8 +24,7 @@ export default function HomePage() {
   const [sheetPrefill, setSheetPrefill] = useState("");
   const [proofTarget, setProofTarget] = useState<Thingy | null>(null);
   const [showDone, setShowDone] = useState(false);
-  const [showMindNoteModal, setShowMindNoteModal] = useState(false);
-  const [showMindSearch, setShowMindSearch] = useState(false);
+  const [showSmartModal, setShowSmartModal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Mark as mounted so SSR and initial client render match (both return null)
@@ -111,41 +109,35 @@ export default function HomePage() {
           <XPBar xp={xp} />
         </header>
 
-        {/* Add thingy row — voice first */}
-        <section className="px-5 pb-3">
-          <div className="flex items-center gap-2">
-            <MicButton onTranscription={handleVoiceTranscription} />
-            <button
-              onClick={handleOpenSheet}
-              className="flex-1 bg-white rounded-2xl px-4 py-3.5 text-left shadow-sm text-carbon-soft/40 text-sm active:bg-cream-dark transition-colors"
-            >
-              what&apos;s the thingy?
-            </button>
-          </div>
-        </section>
-
-        {/* Mind note — quick add + search, always visible */}
+        {/* Two main action buttons */}
         <section className="px-5 pb-5">
-          <div className="flex gap-2">
+          <div className="flex gap-3">
+            {/* NEW THINGY — moss green, contains MicButton for voice + tap for sheet */}
+            <div className="flex-1 bg-[#6B8F71] rounded-2xl shadow-sm flex items-center overflow-hidden min-h-[60px]">
+              <div className="pl-3 pr-1 py-3 shrink-0">
+                <MicButton onTranscription={handleVoiceTranscription} />
+              </div>
+              <button
+                onClick={handleOpenSheet}
+                className="flex-1 py-3 pr-4 text-left active:bg-black/10 transition-colors"
+              >
+                <p className="text-sm font-semibold text-white leading-tight">new thingy</p>
+                <p className="text-[11px] text-white/55 leading-tight">dicta o escribe</p>
+              </button>
+            </div>
+
+            {/* MIND NOTE — lavender, opens smart modal */}
             <button
-              onClick={() => setShowMindNoteModal(true)}
-              className="flex-1 bg-moss-light rounded-2xl px-4 py-3 flex items-center gap-3 active:scale-[0.98] shadow-sm"
+              onClick={() => setShowSmartModal(true)}
+              className="flex-1 bg-[#C9B8E8] rounded-2xl px-4 flex items-center gap-3 min-h-[60px] shadow-sm active:scale-[0.98] transition-all duration-150"
             >
-              <span className="w-9 h-9 bg-moss/20 rounded-xl flex items-center justify-center shrink-0">
-                <NoteIcon />
+              <span className="w-9 h-9 bg-white/30 rounded-xl flex items-center justify-center shrink-0">
+                <MicIconSmall />
               </span>
               <div className="text-left">
-                <p className="text-sm font-semibold text-moss-dark leading-tight">mind note</p>
-                <p className="text-[11px] text-moss-dark/55 leading-tight">captura un pensamiento</p>
+                <p className="text-sm font-semibold text-carbon leading-tight">mind note</p>
+                <p className="text-[11px] text-carbon/55 leading-tight">guarda o pregunta</p>
               </div>
-            </button>
-
-            <button
-              onClick={() => setShowMindSearch(true)}
-              className="w-14 h-14 bg-lavender-light rounded-2xl flex items-center justify-center shadow-sm active:bg-lavender shrink-0"
-              aria-label="buscar en notas"
-            >
-              <SearchIcon />
             </button>
           </div>
         </section>
@@ -248,39 +240,26 @@ export default function HomePage() {
         />
       )}
 
-      {/* Mind note modal */}
-      {showMindNoteModal && (
-        <MindNoteModal
+      {/* Smart mind modal — detects save vs search intent */}
+      {showSmartModal && (
+        <SmartMindModal
           onSave={addNote}
-          onClose={() => setShowMindNoteModal(false)}
-        />
-      )}
-
-      {/* Mind search modal */}
-      {showMindSearch && (
-        <MindSearchModal
           notes={notes}
-          onClose={() => setShowMindSearch(false)}
+          onClose={() => setShowSmartModal(false)}
         />
       )}
     </>
   );
 }
 
-function SearchIcon() {
+function MicIconSmall() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  );
-}
-
-function NoteIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-moss">
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className="text-carbon">
+      <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="22" />
     </svg>
   );
 }
