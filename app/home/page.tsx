@@ -59,6 +59,9 @@ export default function HomePage() {
   const [mindSavedText, setMindSavedText] = useState("");
   const mindRecorderRef = useRef<MediaRecorder | null>(null);
   const mindChunksRef = useRef<Blob[]>([]);
+  // Ref so recorder.onstop always sees the latest notes (avoids stale closure)
+  const notesRef = useRef(notes);
+  useEffect(() => { notesRef.current = notes; }, [notes]);
 
   useEffect(() => setMounted(true), []);
 
@@ -82,12 +85,14 @@ export default function HomePage() {
 
     setMindPhase("loading");
     try {
+      const currentNotes = notesRef.current;
+      console.log("[mind-search client] notes at search time:", currentNotes.length, currentNotes.map((n) => n.text?.slice(0, 30)));
       const res = await fetch("/api/mind-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: transcript,
-          notes: notes.map((n) => ({ text: n.text, photo_url: n.photo_url, created_at: n.created_at })),
+          notes: currentNotes.map((n) => ({ text: n.text, photo_url: n.photo_url, created_at: n.created_at })),
         }),
       });
       const data = (await res.json()) as { answer?: string };

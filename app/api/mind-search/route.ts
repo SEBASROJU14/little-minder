@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`[mind-search] query: "${query}" | notes received: ${notes?.length ?? 0}`);
+    console.log("[mind-search] notes array:", JSON.stringify(notes));
     if (notes?.length) {
       notes.forEach((n, i) =>
         console.log(`  [${i + 1}] ${n.created_at} — ${String(n.text).slice(0, 80)}`)
