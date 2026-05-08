@@ -18,7 +18,7 @@ import { Thingy, EnergyLevel, isNearDeadline, isPastDeadline } from "@/lib/missi
 export default function HomePage() {
   const router = useRouter();
   const { energy, xp, thingys, addThingy, updateThingy, completeThingy, isLoaded } = useApp();
-  const { notes, addNote, deleteNote } = useMindNotes();
+  const { notes, addNote, deleteNote, saveError } = useMindNotes();
 
   const [mounted, setMounted] = useState(false);
   const [showSheet, setShowSheet] = useState(false);
@@ -206,6 +206,11 @@ export default function HomePage() {
           <p className="text-xs font-semibold text-carbon-soft/50 uppercase tracking-wider mb-3">
             mind notes{notes.length > 0 ? ` · ${notes.length}` : ""}
           </p>
+          {saveError && (
+            <div className="mb-3 px-3 py-2 bg-rose-soft/30 rounded-xl text-xs text-red-700">
+              {saveError}
+            </div>
+          )}
           {notes.length === 0 ? (
             <div className="bg-white/60 rounded-2xl py-7 px-4 text-center">
               <p className="text-sm text-carbon-soft/40">ninguna nota aún</p>

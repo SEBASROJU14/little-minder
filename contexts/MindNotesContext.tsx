@@ -23,6 +23,7 @@ export interface MindNote {
 interface MindNotesContextValue {
   notes: MindNote[];
   isLoaded: boolean;
+  saveError: string | null;
   addNote: (text: string | null, photoFile?: File) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
 }
@@ -32,6 +33,7 @@ const MindNotesContext = createContext<MindNotesContextValue | null>(null);
 export function MindNotesProvider({ children }: { children: ReactNode }) {
   const [notes, setNotes] = useState<MindNote[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -54,8 +56,19 @@ export function MindNotesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addNote = useCallback(async (text: string | null, photoFile?: File) => {
-    let photo_url: string | null = null;
+    setSaveError(null);
 
+    // Optimistic update — note appears immediately while Supabase runs in background
+    const tempId = `temp-${Date.now()}`;
+    const tempNote: MindNote = {
+      id: tempId,
+      text: text || null,
+      photo_url: null,
+      created_at: new Date().toISOString(),
+    };
+    setNotes((prev) => [tempNote, ...prev]);
+
+    let photo_url: string | null = null;
     if (photoFile) {
       try {
         const path = `${USER_ID}/${Date.now()}-${photoFile.name}`;
@@ -83,20 +96,25 @@ export function MindNotesProvider({ children }: { children: ReactNode }) {
       .single();
 
     if (error) {
-      console.error("Insert mind note error:", error.message);
+      console.error("Insert mind note error:", error.message, error.code, error.details);
+      // Rollback optimistic note and show error
+      setNotes((prev) => prev.filter((n) => n.id !== tempId));
+      setSaveError(`Error al guardar: ${error.message}`);
       return;
     }
 
-    setNotes((prev) => [data as MindNote, ...prev]);
+    // Replace temp note with the persisted one (gets real id + photo_url)
+    setNotes((prev) => prev.map((n) => (n.id === tempId ? (data as MindNote) : n)));
   }, []);
 
   const deleteNote = useCallback(async (id: string) => {
     setNotes((prev) => prev.filter((n) => n.id !== id));
-    await supabase.from("mind_notes").delete().eq("id", id);
+    const { error } = await supabase.from("mind_notes").delete().eq("id", id);
+    if (error) console.error("Delete mind note error:", error.message);
   }, []);
 
   return (
-    <MindNotesContext.Provider value={{ notes, isLoaded, addNote, deleteNote }}>
+    <MindNotesContext.Provider value={{ notes, isLoaded, saveError, addNote, deleteNote }}>
       {children}
     </MindNotesContext.Provider>
   );
