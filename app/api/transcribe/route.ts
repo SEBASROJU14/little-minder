@@ -21,13 +21,15 @@ export async function POST(req: NextRequest) {
     }
 
     const filename = audioFile.name ?? "recording.webm";
-    console.log(`[Transcribe] received — name: ${filename}, size: ${audioFile.size} bytes, type: ${audioFile.type}`);
+    const t0 = Date.now();
+    console.log(`[Transcribe] request received — name: ${filename}, size: ${audioFile.size} bytes, type: ${audioFile.type}, t=0ms`);
 
     const form = new FormData();
     form.append("file", audioFile, filename);
     form.append("model", "whisper-1");
     form.append("language", "es");
 
+    console.log(`[Transcribe] calling Whisper — t=${Date.now() - t0}ms`);
     const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}` },
@@ -35,7 +37,7 @@ export async function POST(req: NextRequest) {
     });
 
     const rawBody = await res.text();
-    console.log(`[Whisper] status: ${res.status}, body: ${rawBody.slice(0, 300)}`);
+    console.log(`[Transcribe] Whisper responded — status: ${res.status}, t=${Date.now() - t0}ms, body: ${rawBody.slice(0, 300)}`);
 
     if (!res.ok) {
       return NextResponse.json(
