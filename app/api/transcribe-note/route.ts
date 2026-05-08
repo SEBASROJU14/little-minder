@@ -46,7 +46,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ text });
 
   } catch (err) {
+    const e = err instanceof Error ? err : new Error(String(err));
     console.error("[Transcribe-note] Unexpected error:", err);
+    console.log("[Error] name:", e.name, "message:", e.message, "cause:", e.cause, "stack:", e.stack);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal error" },
       { status: 500 }

@@ -34,7 +34,10 @@
       "Bash(git push *)",
       "Bash(echo \"PID: $!\")",
       "Bash(ffmpeg -f lavfi -i anullsrc=r=44100:cl=mono -t 1 -q:a 9 /tmp/test_audio.mp3 -y)",
-      "Bash(ffmpeg -f lavfi -i anullsrc=r=44100:cl=mono -t 2 -q:a 9 /tmp/test_audio.mp3 -y)"
+      "Bash(ffmpeg -f lavfi -i anullsrc=r=44100:cl=mono -t 2 -q:a 9 /tmp/test_audio.mp3 -y)",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs -I{} sh -c 'echo \"PID: {}\" && lsof -p {} -a -d cwd 2>/dev/null | tail -1')",
+      "Bash(awk '{print $9, $2}')"
     ]
   }
 }
