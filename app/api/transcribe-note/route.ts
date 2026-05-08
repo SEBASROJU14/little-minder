@@ -1,30 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
 
 export const maxDuration = 30;
 
-export async function POST(request: NextRequest) {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  try {
-    const formData = await request.formData();
-    const audio = formData.get("audio") as File | null;
+export async function POST(req: NextRequest) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    console.error("[Transcribe-note] OPENAI_API_KEY is not set");
+    return NextResponse.json({ error: "OPENAI_API_KEY not configured" }, { status: 500 });
+  }
 
-    if (!audio) {
-      return NextResponse.json({ error: "No audio provided" }, { status: 400 });
+  try {
+    const body = await req.formData();
+    const audioFile = body.get("audio") as File | null;
+
+    if (!audioFile || audioFile.size === 0) {
+      console.error("[Transcribe-note] No audio in request or empty file");
+      return NextResponse.json({ error: "No audio received" }, { status: 400 });
     }
 
-    const filename = audio instanceof File ? audio.name : "recording.m4a";
-    const file = new File([audio], filename, { type: audio.type || "audio/mp4" });
+    const filename = audioFile.name ?? "recording.m4a";
+    console.log(`[Transcribe-note] received — name: ${filename}, size: ${audioFile.size} bytes, type: ${audioFile.type}`);
 
-    const transcription = await openai.audio.transcriptions.create({
-      file,
-      model: "whisper-1",
-      language: "es",
+    const form = new FormData();
+    form.append("file", audioFile, filename);
+    form.append("model", "whisper-1");
+    form.append("language", "es");
+
+    const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
     });
 
-    return NextResponse.json({ text: transcription.text });
+    const rawBody = await res.text();
+    console.log(`[Transcribe-note] Whisper status: ${res.status}, body: ${rawBody.slice(0, 300)}`);
+
+    if (!res.ok) {
+      return NextResponse.json(
+        { error: `Whisper ${res.status}: ${rawBody.slice(0, 200)}` },
+        { status: 502 }
+      );
+    }
+
+    const { text } = JSON.parse(rawBody) as { text: string };
+    return NextResponse.json({ text });
+
   } catch (err) {
-    console.error("Transcribe note error:", err);
-    return NextResponse.json({ error: "Transcription failed" }, { status: 500 });
+    console.error("[Transcribe-note] Unexpected error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Internal error" },
+      { status: 500 }
+    );
   }
 }
