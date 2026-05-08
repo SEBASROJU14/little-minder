@@ -29,7 +29,12 @@
       "Bash(python3 -m json.tool)",
       "Bash(gh auth *)",
       "Bash(git init *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(ffmpeg -f lavfi -i anullsrc=r=44100:cl=mono -t 1 -q:a 9 /tmp/test_audio.mp3 -y)",
+      "Bash(ffmpeg -f lavfi -i anullsrc=r=44100:cl=mono -t 2 -q:a 9 /tmp/test_audio.mp3 -y)"
     ]
   }
 }
