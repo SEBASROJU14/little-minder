@@ -1,19 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Playfair_Display, Lato } from "next/font/google";
+import { Nunito } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/contexts/AppContext";
 import { MindNotesProvider } from "@/contexts/MindNotesContext";
 
-const playfair = Playfair_Display({
+const nunito = Nunito({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-playfair",
-});
-
-const lato = Lato({
-  subsets: ["latin"],
-  weight: ["300", "400", "700"],
-  variable: "--font-lato",
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-nunito",
 });
 
 export const metadata: Metadata = {
@@ -45,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${playfair.variable} ${lato.variable}`}>
+    <html lang="en" className={nunito.variable}>
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />

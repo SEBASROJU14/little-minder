@@ -121,13 +121,13 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
   return (
     <>
     <div
-      className="bg-[#E8D5B0] rounded-2xl px-4 py-3 shadow-sm mb-2 animate-fade-in select-none"
+      className="rounded-3xl px-4 py-3 mb-2 animate-fade-in select-none"
       style={
         nearDeadline
-          ? { boxShadow: "0 0 0 2px rgba(251,191,36,0.5), 0 1px 4px rgba(0,0,0,0.07)" }
+          ? { background: "linear-gradient(150deg,#EDD9B5 0%,#E3CDA3 100%)", boxShadow: "0 0 0 2px rgba(251,191,36,0.5), 0 2px 8px rgba(44,36,22,0.13)" }
           : pastDeadline && !completed
-          ? { boxShadow: "0 0 0 2px rgba(239,68,68,0.25), 0 1px 4px rgba(0,0,0,0.07)" }
-          : undefined
+          ? { background: "linear-gradient(150deg,#EDD9B5 0%,#E3CDA3 100%)", boxShadow: "0 0 0 2px rgba(239,68,68,0.25), 0 2px 8px rgba(44,36,22,0.13)" }
+          : { background: "linear-gradient(150deg,#EDD9B5 0%,#E3CDA3 100%)", boxShadow: "0 2px 8px rgba(44,36,22,0.12), 0 1px 2px rgba(44,36,22,0.06)" }
       }
       onPointerDown={handleCardPointerDown}
       onPointerUp={cancelLongPress}
