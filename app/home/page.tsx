@@ -208,6 +208,11 @@ export default function HomePage() {
     setProofTarget(null);
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.replace("/");
+  };
+
   const handleDoAgain = (id: string) => {
     const t = thingys.find((x) => x.id === id);
     if (!t) return;
@@ -225,8 +230,21 @@ export default function HomePage() {
       <main className="min-h-dvh flex flex-col pb-28">
 
         {/* XP */}
-        <header className="px-5 pt-7 pb-3">
-          <XPBar xp={xp} />
+        <header className="px-5 pt-7 pb-3 flex items-center gap-3">
+          <div className="flex-1">
+            <XPBar xp={xp} />
+          </div>
+          <button
+            onClick={handleLogout}
+            title="Sign out"
+            className="shrink-0 text-carbon-soft/40 hover:text-carbon-soft/70 transition-colors active:scale-90"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
         </header>
 
         {/* Two main action buttons */}
