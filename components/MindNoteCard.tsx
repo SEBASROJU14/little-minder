@@ -15,6 +15,7 @@ export default function MindNoteCard({ note, onDelete, onUpdateText, onAddPhoto 
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(note.text ?? "");
   const [showPhotoSheet, setShowPhotoSheet] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
@@ -71,12 +72,25 @@ export default function MindNoteCard({ note, onDelete, onUpdateText, onAddPhoto 
       onPointerCancel={cancelLongPress}
     >
       {note.photo_url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={note.photo_url}
-          alt=""
-          className="w-14 h-14 rounded-xl object-cover shrink-0"
-        />
+        <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); setFullscreen(true); }}
+          className="shrink-0 relative group"
+          aria-label="ver foto"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={note.photo_url}
+            alt=""
+            className="w-14 h-14 rounded-xl object-cover"
+          />
+          <span className="absolute bottom-1 right-1 w-5 h-5 bg-black/40 rounded-full flex items-center justify-center">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+          </span>
+        </button>
       )}
 
       <div className="flex-1 min-w-0">
@@ -124,6 +138,20 @@ export default function MindNoteCard({ note, onDelete, onUpdateText, onAddPhoto 
           ×
         </button>
       </div>
+
+      {fullscreen && note.photo_url && (
+        <div className="fixed inset-0 z-50 bg-black flex items-center justify-center" onClick={() => setFullscreen(false)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={note.photo_url} alt="" className="max-w-full max-h-full object-contain" />
+          <button
+            onClick={() => setFullscreen(false)}
+            className="absolute top-5 right-5 w-9 h-9 bg-white/15 rounded-full flex items-center justify-center text-white text-xl leading-none"
+            aria-label="cerrar"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoChange} />
       <input ref={galleryRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
