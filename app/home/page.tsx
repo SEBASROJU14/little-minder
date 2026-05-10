@@ -12,6 +12,7 @@ import AddThingySheet from "@/components/AddThingySheet";
 import ProofModal from "@/components/ProofModal";
 import MicButton from "@/components/MicButton";
 import MindNoteCard from "@/components/MindNoteCard";
+import PhotoPickerSheet from "@/components/PhotoPickerSheet";
 import { Thingy, EnergyLevel, isNearDeadline, isPastDeadline } from "@/lib/missions";
 
 // ── Mind Note inline recording ────────────────────────────────────────────────
@@ -45,7 +46,7 @@ function detectMindIntent(text: string): "save" | "search" {
 export default function HomePage() {
   const router = useRouter();
   const { energy, xp, thingys, addThingy, updateThingy, completeThingy, isLoaded } = useApp();
-  const { notes, addNote, deleteNote, saveError } = useMindNotes();
+  const { notes, addNote, deleteNote, updateNoteText, addPhotoToNote, saveError } = useMindNotes();
 
   const [mounted, setMounted] = useState(false);
   const [showSheet, setShowSheet] = useState(false);
@@ -58,6 +59,10 @@ export default function HomePage() {
   const [mindPhase, setMindPhase] = useState<MindPhase>("idle");
   const [mindAnswer, setMindAnswer] = useState("");
   const [mindSavedText, setMindSavedText] = useState("");
+  const [mindSavedNoteId, setMindSavedNoteId] = useState<string | null>(null);
+  const [showSavedPhotoSheet, setShowSavedPhotoSheet] = useState(false);
+  const savedCameraRef = useRef<HTMLInputElement>(null);
+  const savedGalleryRef = useRef<HTMLInputElement>(null);
   const mindRecorderRef = useRef<MediaRecorder | null>(null);
   const mindChunksRef = useRef<Blob[]>([]);
   // Ref so recorder.onstop always sees the latest notes (avoids stale closure)
@@ -79,10 +84,11 @@ export default function HomePage() {
     const intent = detectMindIntent(transcript);
 
     if (intent === "save") {
-      await addNote(transcript);
+      const noteId = await addNote(transcript);
+      setMindSavedNoteId(noteId);
       setMindSavedText(transcript);
       setMindPhase("saved");
-      setTimeout(() => setMindPhase("idle"), 3000);
+      setTimeout(() => { setMindPhase("idle"); setMindSavedNoteId(null); }, 3000);
       return;
     }
 
@@ -324,6 +330,38 @@ export default function HomePage() {
             <div className="mt-2 bg-white rounded-2xl px-4 py-3 shadow-sm">
               <p className="text-xs text-carbon/50 mb-1">guardado 🐱</p>
               <p className="text-sm text-carbon leading-relaxed">{mindSavedText}</p>
+              {mindSavedNoteId && (
+                <button
+                  onClick={() => setShowSavedPhotoSheet(true)}
+                  className="mt-2 flex items-center gap-1.5 text-xs text-carbon-soft/50 hover:text-carbon-soft/80 transition-colors active:scale-95"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                  agregar foto
+                </button>
+              )}
+              {(() => {
+                const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                  const file = e.target.files?.[0];
+                  if (file && mindSavedNoteId) void addPhotoToNote(mindSavedNoteId, file);
+                  e.target.value = "";
+                };
+                return (
+                  <>
+                    <input ref={savedCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onChange} />
+                    <input ref={savedGalleryRef} type="file" accept="image/*" className="hidden" onChange={onChange} />
+                  </>
+                );
+              })()}
+              {showSavedPhotoSheet && (
+                <PhotoPickerSheet
+                  onCamera={() => { setShowSavedPhotoSheet(false); savedCameraRef.current?.click(); }}
+                  onGallery={() => { setShowSavedPhotoSheet(false); savedGalleryRef.current?.click(); }}
+                  onClose={() => setShowSavedPhotoSheet(false)}
+                />
+              )}
             </div>
           )}
 
@@ -404,7 +442,13 @@ export default function HomePage() {
             </div>
           ) : (
             notes.map((note) => (
-              <MindNoteCard key={note.id} note={note} onDelete={deleteNote} />
+              <MindNoteCard
+                key={note.id}
+                note={note}
+                onDelete={deleteNote}
+                onUpdateText={updateNoteText}
+                onAddPhoto={addPhotoToNote}
+              />
             ))
           )}
         </section>
