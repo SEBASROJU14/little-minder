@@ -66,7 +66,7 @@ export default function MindNoteCard({ note, onDelete, onUpdateText, onAddPhoto 
 
   return (
     <div
-      className="bg-white rounded-2xl shadow-sm px-4 py-3 flex gap-3 mb-2 animate-fade-in select-none"
+      className="bg-[#E8D5B0] rounded-2xl shadow-sm px-4 py-3 flex gap-3 mb-2 animate-fade-in select-none"
       onPointerDown={handlePointerDown}
       onPointerUp={cancelLongPress}
       onPointerLeave={cancelLongPress}

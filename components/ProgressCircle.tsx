@@ -34,14 +34,14 @@ export default function ProgressCircle({ progress, onProgress, size = 48, readon
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         {/* Track */}
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#ddd8f0" strokeWidth="3.5" />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#DDD0B8" strokeWidth="3.5" />
 
         {/* Progress arc */}
         {progress > 0 && (
           <circle
             cx={cx} cy={cy} r={r}
             fill="none"
-            stroke={done ? "#6b8f71" : "#c9b8e8"}
+            stroke={done ? "#4A5240" : "#7D2E3A"}
             strokeWidth="3.5"
             strokeDasharray={`${fill} ${circ}`}
             strokeLinecap="round"
@@ -56,14 +56,14 @@ export default function ProgressCircle({ progress, onProgress, size = 48, readon
           <polyline
             points={`${size * 0.3},${size * 0.52} ${size * 0.46},${size * 0.66} ${size * 0.7},${size * 0.37}`}
             fill="none"
-            stroke="#6b8f71"
+            stroke="#4A5240"
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
         ) : progress === 0 ? (
           // Empty dot
-          <circle cx={cx} cy={cy} r={r * 0.25} fill="#c9b8e8" />
+          <circle cx={cx} cy={cy} r={r * 0.25} fill="#7D2E3A" />
         ) : (
           // Percentage text
           <text
@@ -71,7 +71,7 @@ export default function ProgressCircle({ progress, onProgress, size = 48, readon
             textAnchor="middle"
             fontSize={size * 0.22}
             fontFamily="var(--font-sans)"
-            fill="#5d5d5d"
+            fill="#7A6A52"
           >
             {progress}%
           </text>

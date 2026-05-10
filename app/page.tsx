@@ -8,9 +8,9 @@ import { EnergyLevel } from "@/lib/missions";
 import { supabase } from "@/lib/supabase";
 
 const energyOptions: { level: EnergyLevel; label: string; desc: string; bg: string }[] = [
-  { level: "low",    label: "low",    desc: "tired, taking it easy",  bg: "#F5D4D4" },
-  { level: "medium", label: "medium", desc: "okay, going steady",     bg: "#E8E0F5" },
-  { level: "high",   label: "high",   desc: "energized and ready",    bg: "#D4E6D6" },
+  { level: "low",    label: "low",    desc: "tired, taking it easy",  bg: "#F2D0C8" },
+  { level: "medium", label: "medium", desc: "okay, going steady",     bg: "#F0D5D8" },
+  { level: "high",   label: "high",   desc: "energized and ready",    bg: "#C8D0BB" },
 ];
 
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;

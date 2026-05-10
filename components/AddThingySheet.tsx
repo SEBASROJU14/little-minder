@@ -20,9 +20,9 @@ interface Props {
 }
 
 const ENERGY_COLORS: Record<EnergyLevel, string> = {
-  low:    "#F5D4D4",
-  medium: "#E8E0F5",
-  high:   "#D4E6D6",
+  low:    "#F2D0C8",
+  medium: "#F0D5D8",
+  high:   "#C8D0BB",
 };
 
 export default function AddThingySheet({ prefillText, defaultEnergy, prefillIsDaily, prefillDeadline, prefillRequirePhoto, onSave, onClose, onDelete }: Props) {

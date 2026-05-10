@@ -121,7 +121,7 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
   return (
     <>
     <div
-      className="bg-white rounded-2xl px-4 py-3 shadow-sm mb-2 animate-fade-in select-none"
+      className="bg-[#E8D5B0] rounded-2xl px-4 py-3 shadow-sm mb-2 animate-fade-in select-none"
       style={
         nearDeadline
           ? { boxShadow: "0 0 0 2px rgba(251,191,36,0.5), 0 1px 4px rgba(0,0,0,0.07)" }

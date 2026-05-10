@@ -258,7 +258,7 @@ export default function HomePage() {
         <section className="px-5 pb-4">
           <div className="flex gap-3">
             {/* NEW THINGY — moss green */}
-            <div className="flex-1 bg-[#6B8F71] rounded-2xl shadow-sm flex items-center overflow-hidden min-h-[60px]">
+            <div className="flex-1 bg-[#4A5240] rounded-2xl shadow-sm flex items-center overflow-hidden min-h-[60px]">
               <div className="pl-3 pr-1 py-3 shrink-0">
                 <MicButton onTranscription={handleVoiceTranscription} />
               </div>
@@ -281,8 +281,8 @@ export default function HomePage() {
                   : mindPhase === "loading"
                   ? "bg-cream-dark"
                   : mindPhase === "saved"
-                  ? "bg-[#6B8F71]/20"
-                  : "bg-[#C9B8E8] active:scale-[0.98]"
+                  ? "bg-[#4A5240]/20"
+                  : "bg-[#F0D5D8] active:scale-[0.98]"
                 }`}
             >
               {mindPhase === "idle" && (
@@ -314,7 +314,7 @@ export default function HomePage() {
               {mindPhase === "saved" && (
                 <>
                   <span className="text-lg shrink-0">🐱</span>
-                  <p className="text-sm font-semibold text-[#6B8F71] leading-tight">guardado</p>
+                  <p className="text-sm font-semibold text-[#4A5240] leading-tight">guardado</p>
                 </>
               )}
               {mindPhase === "answer" && (

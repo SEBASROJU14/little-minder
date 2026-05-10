@@ -7,9 +7,9 @@ import MicButton from "@/components/MicButton";
 import { EnergyLevel } from "@/lib/missions";
 
 const energyOptions: { level: EnergyLevel; label: string; bg: string }[] = [
-  { level: "low",    label: "low",    bg: "#F5D4D4" },
-  { level: "medium", label: "medium", bg: "#E8E0F5" },
-  { level: "high",   label: "high",   bg: "#D4E6D6" },
+  { level: "low",    label: "low",    bg: "#F2D0C8" },
+  { level: "medium", label: "medium", bg: "#F0D5D8" },
+  { level: "high",   label: "high",   bg: "#C8D0BB" },
 ];
 
 export default function CreatePage() {

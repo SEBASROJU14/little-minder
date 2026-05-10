@@ -1,20 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-jakarta, "Plus Jakarta Sans", sans-serif);
+  --font-sans: var(--font-lato, "Lato", sans-serif);
+  --font-serif: var(--font-playfair, "Playfair Display", serif);
 
-  --color-cream: #fafaf8;
-  --color-cream-dark: #f0efe8;
-  --color-lavender: #c9b8e8;
-  --color-lavender-light: #e8e0f5;
-  --color-lavender-dark: #a89ac8;
-  --color-moss: #6b8f71;
-  --color-moss-light: #d4e6d6;
-  --color-moss-dark: #4a6b50;
-  --color-carbon: #2d2d2d;
-  --color-carbon-soft: #5d5d5d;
-  --color-rose-soft: #f5d4d4;
-  --color-amber-soft: #fef3c7;
+  --color-cream: #F5ECD7;
+  --color-cream-dark: #EDE0C4;
+  --color-lavender: #7D2E3A;
+  --color-lavender-light: #F0D5D8;
+  --color-lavender-dark: #5C2229;
+  --color-moss: #4A5240;
+  --color-moss-light: #C8D0BB;
+  --color-moss-dark: #2E3428;
+  --color-carbon: #2C2416;
+  --color-carbon-soft: #7A6A52;
+  --color-rose-soft: #F2D0C8;
+  --color-amber-soft: #F5E6B5;
   --color-amber-800: #92400e;
 }
 
@@ -22,9 +23,13 @@
   box-sizing: border-box;
 }
 
+h1, h2, h3 {
+  font-family: var(--font-serif);
+}
+
 body {
-  background-color: #fafaf8;
-  color: #2d2d2d;
+  background-color: #F5ECD7;
+  color: #2C2416;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
