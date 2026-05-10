@@ -28,6 +28,7 @@ function getMindMimeType(): string {
 function detectMindIntent(text: string): "save" | "search" {
   const lower = text.toLowerCase();
   const searchWords = [
+    "consulta",
     "dónde", "donde", "cuándo", "cuando", "qué tengo", "que tengo",
     "busca", "encuentra", "hay algo", "tengo apuntado", "cuántos", "cuantos",
     "recuerdas", "qué dijiste", "que dijiste", "qué hay", "que hay",
