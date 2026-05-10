@@ -1,10 +1,8 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from "react";
 import { Thingy, Chunk, EnergyLevel, createThingy, XP_REWARDS, PROOF_BONUS_XP } from "@/lib/missions";
 import { supabase } from "@/lib/supabase";
-
-const USER_ID = "default_user";
 
 interface AppState {
   energy: EnergyLevel | null;
@@ -52,10 +50,10 @@ function rowToThingy(row: DbRow): Thingy {
   };
 }
 
-function thingyToRow(t: Thingy): DbRow {
+function thingyToRow(t: Thingy, userId: string): DbRow {
   return {
     id: t.id,
-    user_id: USER_ID,
+    user_id: userId,
     title: t.text,
     energy: t.energyLevel,
     completed: t.completed,
@@ -96,11 +94,31 @@ function updatesToRow(updates: Partial<Thingy>): DbRow {
 // --------------------------------
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const userIdRef = useRef<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
   const [state, setState] = useState<AppState>({
     energy: null, energyDate: null, thingys: [], xp: 0, isLoaded: false,
   });
 
+  // Resolve authenticated user ID and stay in sync with auth state changes
   useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      const id = data.session?.user.id ?? null;
+      userIdRef.current = id;
+      setUserId(id);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const id = session?.user.id ?? null;
+      userIdRef.current = id;
+      setUserId(id);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+
     async function load() {
       const energy = localStorage.getItem("lm_energy") as EnergyLevel | null;
       const energyDate = localStorage.getItem("lm_energy_date");
@@ -109,7 +127,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const { data: rows, error: tErr } = await supabase
           .from("thingys")
           .select("*")
-          .eq("user_id", USER_ID)
+          .eq("user_id", userId)
           .order("created_at", { ascending: false });
 
         if (tErr) throw new Error(tErr.message);
@@ -137,7 +155,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const { data: xpRow, error: xErr } = await supabase
           .from("user_xp")
           .select("xp")
-          .eq("user_id", USER_ID)
+          .eq("user_id", userId)
           .maybeSingle();
 
         if (xErr) throw new Error(xErr.message);
@@ -146,13 +164,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setState({ energy, energyDate, thingys, xp, isLoaded: true });
       } catch (err) {
         console.error("Supabase load error:", err);
-        // Fail open — show the app with empty state rather than blank forever
         setState({ energy, energyDate, thingys: [], xp: 0, isLoaded: true });
       }
     }
 
     load();
-  }, []);
+  }, [userId]);
 
   const setEnergy = useCallback((level: EnergyLevel) => {
     const date = new Date().toDateString();
@@ -166,9 +183,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const t = createThingy(text, energyLevel, { isCustom: true, ...opts });
       setState((p) => ({ ...p, thingys: [t, ...p.thingys] }));
       // .then() is required — Supabase v2 queries are lazy and only execute on await/.then()
-      supabase.from("thingys").insert(thingyToRow(t)).then(({ error }) => {
-        if (error) console.error("Insert thingy error:", error.message);
-      });
+      const uid = userIdRef.current;
+      if (uid) {
+        supabase.from("thingys").insert(thingyToRow(t, uid)).then(({ error }) => {
+          if (error) console.error("Insert thingy error:", error.message);
+        });
+      }
       return t;
     },
     []
@@ -205,12 +225,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (error) console.error("Complete thingy error:", error.message);
       });
 
-      supabase.from("user_xp").upsert(
-        { user_id: USER_ID, xp: newXP, updated_at: completedAt },
-        { onConflict: "user_id" }
-      ).then(({ error }) => {
-        if (error) console.error("Upsert XP error:", error.message);
-      });
+      const uid = userIdRef.current;
+      if (uid) {
+        supabase.from("user_xp").upsert(
+          { user_id: uid, xp: newXP, updated_at: completedAt },
+          { onConflict: "user_id" }
+        ).then(({ error }) => {
+          if (error) console.error("Upsert XP error:", error.message);
+        });
+      }
 
       return {
         ...p,

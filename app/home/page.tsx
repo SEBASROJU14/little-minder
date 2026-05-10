@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/contexts/AppContext";
 import { useMindNotes } from "@/contexts/MindNotesContext";
+import { supabase } from "@/lib/supabase";
 import XPBar from "@/components/XPBar";
 import ThingyCard from "@/components/ThingyCard";
 import CatCompanion from "@/components/CatCompanion";
@@ -67,7 +68,9 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!mounted || !isLoaded) return;
-    if (!sessionStorage.getItem("lm_session")) router.replace("/");
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) router.replace("/");
+    });
   }, [mounted, isLoaded, router]);
 
   // ── Mind note processing ────────────────────────────────────────────────────

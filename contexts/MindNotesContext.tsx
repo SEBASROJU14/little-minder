@@ -5,12 +5,12 @@ import {
   useContext,
   useState,
   useEffect,
+  useRef,
   useCallback,
   ReactNode,
 } from "react";
 import { supabase } from "@/lib/supabase";
 
-const USER_ID = "default_user";
 const PHOTO_BUCKET = "mind-note-photos";
 
 export interface MindNote {
@@ -31,17 +31,37 @@ interface MindNotesContextValue {
 const MindNotesContext = createContext<MindNotesContextValue | null>(null);
 
 export function MindNotesProvider({ children }: { children: ReactNode }) {
+  const userIdRef = useRef<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
   const [notes, setNotes] = useState<MindNote[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Resolve authenticated user ID and stay in sync with auth state changes
   useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      const id = data.session?.user.id ?? null;
+      userIdRef.current = id;
+      setUserId(id);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const id = session?.user.id ?? null;
+      userIdRef.current = id;
+      setUserId(id);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+
     async function load() {
       try {
         const { data, error } = await supabase
           .from("mind_notes")
           .select("*")
-          .eq("user_id", USER_ID)
+          .eq("user_id", userId)
           .order("created_at", { ascending: false });
 
         if (error) throw error;
@@ -53,7 +73,7 @@ export function MindNotesProvider({ children }: { children: ReactNode }) {
       }
     }
     load();
-  }, []);
+  }, [userId]);
 
   const addNote = useCallback(async (text: string | null, photoFile?: File) => {
     setSaveError(null);
@@ -68,10 +88,17 @@ export function MindNotesProvider({ children }: { children: ReactNode }) {
     };
     setNotes((prev) => [tempNote, ...prev]);
 
+    const uid = userIdRef.current;
+    if (!uid) {
+      setNotes((prev) => prev.filter((n) => n.id !== tempId));
+      setSaveError("Error al guardar, intenta de nuevo");
+      return;
+    }
+
     let photo_url: string | null = null;
     if (photoFile) {
       try {
-        const path = `${USER_ID}/${Date.now()}-${photoFile.name}`;
+        const path = `${uid}/${Date.now()}-${photoFile.name}`;
         const { error: uploadError } = await supabase.storage
           .from(PHOTO_BUCKET)
           .upload(path, photoFile, { contentType: photoFile.type });
@@ -91,7 +118,7 @@ export function MindNotesProvider({ children }: { children: ReactNode }) {
 
     const { data, error } = await supabase
       .from("mind_notes")
-      .insert({ user_id: USER_ID, text: text || null, photo_url })
+      .insert({ user_id: uid, text: text || null, photo_url })
       .select()
       .single();
 
