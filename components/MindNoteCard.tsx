@@ -55,6 +55,7 @@ export default function MindNoteCard({ note, onDelete, onUpdateText, onAddPhoto 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) void onAddPhoto(note.id, file);
+    setShowPhotoSheet(false);
     e.target.value = "";
   };
 
@@ -71,28 +72,6 @@ export default function MindNoteCard({ note, onDelete, onUpdateText, onAddPhoto 
       onPointerLeave={cancelLongPress}
       onPointerCancel={cancelLongPress}
     >
-      {note.photo_url && (
-        <button
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); setFullscreen(true); }}
-          className="shrink-0 relative group"
-          aria-label="ver foto"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={note.photo_url}
-            alt=""
-            className="w-14 h-14 rounded-xl object-cover"
-          />
-          <span className="absolute bottom-1 right-1 w-5 h-5 bg-black/40 rounded-full flex items-center justify-center">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-              <circle cx="12" cy="13" r="4" />
-            </svg>
-          </span>
-        </button>
-      )}
-
       <div className="flex-1 min-w-0">
         <p className="text-[10px] text-carbon-soft/40 mb-1">{date}</p>
 
@@ -110,6 +89,17 @@ export default function MindNoteCard({ note, onDelete, onUpdateText, onAddPhoto 
           <p className="text-sm text-carbon leading-snug line-clamp-2">{note.text}</p>
         ) : (
           <p className="text-sm text-carbon-soft/35 italic">solo foto</p>
+        )}
+
+        {note.photo_url && !editing && (
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); setFullscreen(true); }}
+            className="mt-1.5 text-base leading-none active:scale-95 transition-transform"
+            aria-label="ver foto"
+          >
+            📷
+          </button>
         )}
 
         {/* Add photo button — only when note has no photo yet */}
@@ -140,9 +130,9 @@ export default function MindNoteCard({ note, onDelete, onUpdateText, onAddPhoto 
       </div>
 
       {fullscreen && note.photo_url && (
-        <div className="fixed inset-0 z-50 bg-black flex items-center justify-center" onClick={() => setFullscreen(false)}>
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center" onClick={() => setFullscreen(false)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={note.photo_url} alt="" className="max-w-full max-h-full object-contain" />
+          <img src={note.photo_url} alt="" className="max-w-[90vw] max-h-[85vh] rounded-xl" />
           <button
             onClick={() => setFullscreen(false)}
             className="absolute top-5 right-5 w-9 h-9 bg-white/15 rounded-full flex items-center justify-center text-white text-xl leading-none"
