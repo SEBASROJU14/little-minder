@@ -7,12 +7,16 @@ import { EnergyLevel, suggestEnergy } from "@/lib/missions";
 interface Props {
   prefillText?: string;
   defaultEnergy?: EnergyLevel;
+  prefillIsDaily?: boolean;
+  prefillDeadline?: string;
+  prefillRequirePhoto?: boolean;
   onSave: (
     text: string,
     energy: EnergyLevel,
     opts: { isDaily: boolean; requirePhotoProof: boolean; deadline?: string }
   ) => void;
   onClose: () => void;
+  onDelete?: () => void;
 }
 
 const ENERGY_COLORS: Record<EnergyLevel, string> = {
@@ -21,25 +25,25 @@ const ENERGY_COLORS: Record<EnergyLevel, string> = {
   high:   "#D4E6D6",
 };
 
-export default function AddThingySheet({ prefillText, defaultEnergy, onSave, onClose }: Props) {
+export default function AddThingySheet({ prefillText, defaultEnergy, prefillIsDaily, prefillDeadline, prefillRequirePhoto, onSave, onClose, onDelete }: Props) {
   const [text, setText] = useState(prefillText ?? "");
   const [energy, setEnergy] = useState<EnergyLevel>(defaultEnergy ?? "medium");
-  const [isDaily, setIsDaily] = useState(false);
-  const [requirePhoto, setRequirePhoto] = useState(false);
-  const [hasDeadline, setHasDeadline] = useState(false);
-  const [deadline, setDeadline] = useState("");
+  const [isDaily, setIsDaily] = useState(prefillIsDaily ?? false);
+  const [requirePhoto, setRequirePhoto] = useState(prefillRequirePhoto ?? false);
+  const [hasDeadline, setHasDeadline] = useState(!!prefillDeadline);
+  const [deadline, setDeadline] = useState(prefillDeadline ?? "");
   const [catSuggested, setCatSuggested] = useState(false);
 
-  // If prefill text arrives, auto-suggest energy
+  // If prefill text arrives in add mode, auto-suggest energy
   useEffect(() => {
-    if (prefillText) {
+    if (prefillText && !onDelete) {
       const s = suggestEnergy(prefillText);
       setEnergy(s);
       setCatSuggested(true);
       const t = setTimeout(() => setCatSuggested(false), 2500);
       return () => clearTimeout(t);
     }
-  }, [prefillText]);
+  }, [prefillText, onDelete]);
 
   const handleAskCat = () => {
     if (!text.trim()) return;
@@ -74,7 +78,18 @@ export default function AddThingySheet({ prefillText, defaultEnergy, onSave, onC
         {/* Handle */}
         <div className="w-10 h-1 bg-cream-dark rounded-full mx-auto mb-5" />
 
-        <h2 className="text-base font-semibold text-carbon mb-5">new thingy</h2>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-semibold text-carbon">{onDelete ? "editar thingy" : "new thingy"}</h2>
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="text-carbon-soft/30 hover:text-carbon-soft/60 active:scale-90 transition-all text-lg leading-none"
+              aria-label="eliminar thingy"
+            >
+              🗑️
+            </button>
+          )}
+        </div>
 
         {/* Voice + text */}
         <div className="flex items-start gap-3 mb-5">
@@ -171,7 +186,7 @@ export default function AddThingySheet({ prefillText, defaultEnergy, onSave, onC
             }
           `}
         >
-          add thingy
+          {onDelete ? "guardar" : "add thingy"}
         </button>
       </div>
     </div>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Thingy, Chunk, EnergyLevel, isNearDeadline, isPastDeadline, formatDeadline, calcChunkProgress } from "@/lib/missions";
 import ProgressCircle from "./ProgressCircle";
 import EnergyPill from "./EnergyPill";
+import AddThingySheet from "./AddThingySheet";
 
 interface Props {
   thingy: Thingy;
@@ -21,10 +22,29 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [newChunkText, setNewChunkText] = useState("");
 
+  // ── Long press → edit ───────────────────────────────────────────────────────
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleCardPointerDown = (e: React.PointerEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button, input, textarea")) return;
+    longPressTimer.current = setTimeout(() => setShowEdit(true), 500);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  // ── Deadline ────────────────────────────────────────────────────────────────
+
   const nearDeadline = isNearDeadline(deadline);
   const pastDeadline = isPastDeadline(deadline);
 
-  // When chunks are active, progress is computed; otherwise manual
   const displayProgress = chunksEnabled && chunks.length > 0
     ? calcChunkProgress(chunks)
     : progress;
@@ -32,7 +52,7 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
   // --- progress handlers ---
 
   const handleManualProgress = (next: number) => {
-    if (chunksEnabled) return; // locked when chunks active
+    if (chunksEnabled) return;
     if (next === 100) {
       onComplete(thingy);
     } else {
@@ -99,8 +119,9 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
   };
 
   return (
+    <>
     <div
-      className="bg-white rounded-2xl px-4 py-3 shadow-sm mb-2 animate-fade-in"
+      className="bg-white rounded-2xl px-4 py-3 shadow-sm mb-2 animate-fade-in select-none"
       style={
         nearDeadline
           ? { boxShadow: "0 0 0 2px rgba(251,191,36,0.5), 0 1px 4px rgba(0,0,0,0.07)" }
@@ -108,6 +129,10 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
           ? { boxShadow: "0 0 0 2px rgba(239,68,68,0.25), 0 1px 4px rgba(0,0,0,0.07)" }
           : undefined
       }
+      onPointerDown={handleCardPointerDown}
+      onPointerUp={cancelLongPress}
+      onPointerLeave={cancelLongPress}
+      onPointerCancel={cancelLongPress}
     >
       <div className="flex items-start gap-3">
         {/* Progress circle — read-only when chunks active */}
@@ -265,7 +290,64 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
           )}
         </div>
       </div>
+
     </div>
+
+    {/* Renderizados fuera del div con animate-fade-in para evitar stacking context */}
+    {showEdit && (
+      <AddThingySheet
+        prefillText={text}
+        defaultEnergy={energyLevel as EnergyLevel}
+        prefillIsDaily={isDaily}
+        prefillDeadline={deadline}
+        prefillRequirePhoto={requirePhotoProof}
+        onSave={(newText, newEnergy, opts) => {
+          onUpdate(id, {
+            text: newText,
+            energyLevel: newEnergy,
+            isDaily: opts.isDaily,
+            requirePhotoProof: opts.requirePhotoProof,
+            deadline: opts.deadline,
+          });
+          setShowEdit(false);
+        }}
+        onClose={() => setShowEdit(false)}
+        onDelete={() => setShowDeleteConfirm(true)}
+      />
+    )}
+
+    {showDeleteConfirm && (
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center px-6"
+        onClick={() => setShowDeleteConfirm(false)}
+      >
+        <div className="absolute inset-0 bg-black/40" />
+        <div
+          className="relative bg-white rounded-2xl px-5 py-5 w-full max-w-sm"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="text-sm font-semibold text-carbon mb-1">
+            ¿Seguro que quieres eliminar este thingy?
+          </p>
+          <p className="text-xs text-carbon-soft/50 mb-5 line-clamp-2">{text}</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              className="flex-1 py-3 rounded-2xl bg-cream-dark text-sm font-medium text-carbon active:scale-95 transition-transform"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => { setShowDeleteConfirm(false); setShowEdit(false); onComplete(thingy); }}
+              className="flex-1 py-3 rounded-2xl bg-carbon text-sm font-medium text-white active:scale-95 transition-transform"
+            >
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -293,3 +375,4 @@ function AttributePill({
     </button>
   );
 }
+
