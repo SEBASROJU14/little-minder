@@ -7,7 +7,6 @@ import { useMindNotes } from "@/contexts/MindNotesContext";
 import { supabase } from "@/lib/supabase";
 import XPBar from "@/components/XPBar";
 import ThingyCard from "@/components/ThingyCard";
-import CatCompanion from "@/components/CatCompanion";
 import AddThingySheet from "@/components/AddThingySheet";
 import ProofModal from "@/components/ProofModal";
 import MicButton from "@/components/MicButton";
@@ -42,6 +41,54 @@ function detectMindIntent(text: string): "save" | "search" {
   return "save";
 }
 
+// ── Cat messages (ES) ─────────────────────────────────────────────────────────
+
+const CAT_CLICK_ES = [
+  "podemos hacer una cosa pequeña",
+  "está bien ir despacio",
+  "esto cuenta",
+  "lo estás haciendo bien",
+  "un paso es suficiente",
+  "aquí estoy contigo",
+  "sin prisa, de verdad",
+  "hasta las cosas pequeñas cuentan",
+];
+
+const CAT_ENERGY_ES: Record<string, string[]> = {
+  low: [
+    "podemos hacer un thingy pequeño",
+    "está bien ir despacio",
+    "hasta las cosas pequeñas cuentan",
+    "descansar también es hacer algo",
+    "apareciste, eso importa",
+  ],
+  medium: [
+    "un thingy a la vez",
+    "constante está perfecto",
+    "esto también cuenta",
+    "lo estás haciendo bien",
+    "las cosas pequeñas suman",
+  ],
+  high: [
+    "usemos bien esta energía",
+    "tú puedes",
+    "cosas buenas vienen",
+    "a tu propio ritmo",
+    "¿lo sientes? vamos",
+  ],
+};
+
+const CAT_IDLE_ES = [
+  "aquí sigo :)",
+  "sin prisa",
+  "una cosa a la vez",
+  "tú puedes",
+  "las cosas pequeñas cuentan",
+  "tómatelo con calma",
+  "te estoy echando porras",
+  "respira",
+];
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
@@ -69,6 +116,34 @@ export default function HomePage() {
   // Ref so recorder.onstop always sees the latest notes (avoids stale closure)
   const notesRef = useRef(notes);
   useEffect(() => { notesRef.current = notes; }, [notes]);
+
+  // ── Cat companion state ───────────────────────────────────────────────────
+  const [catMessage, setCatMessage] = useState<string | null>(null);
+  const [catVisible, setCatVisible] = useState(false);
+  const catTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showCat = (msg: string, duration = 3800) => {
+    if (catTimerRef.current) clearTimeout(catTimerRef.current);
+    setCatMessage(msg);
+    setCatVisible(true);
+    catTimerRef.current = setTimeout(() => setCatVisible(false), duration);
+  };
+
+  const handleCatClick = () => {
+    showCat(CAT_CLICK_ES[Math.floor(Math.random() * CAT_CLICK_ES.length)], 3000);
+  };
+
+  useEffect(() => {
+    const msgs = energy ? (CAT_ENERGY_ES[energy] ?? CAT_IDLE_ES) : CAT_IDLE_ES;
+    const rand = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+    const initial = setTimeout(() => showCat(rand(msgs)), 2000);
+    const interval = setInterval(() => showCat(rand(msgs)), 18000);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(interval);
+      if (catTimerRef.current) clearTimeout(catTimerRef.current);
+    };
+  }, [energy]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => setMounted(true), []);
 
@@ -383,6 +458,44 @@ export default function HomePage() {
           )}
         </section>
 
+        {/* Cat companion */}
+        <div className="flex flex-col items-center py-2 gap-2">
+          <div
+            className="bg-white rounded-2xl rounded-b-sm px-3 py-2 shadow-md max-w-[160px]"
+            style={{
+              opacity: catVisible ? 1 : 0,
+              transform: catVisible ? "translateY(0)" : "translateY(6px)",
+              transition: "opacity 0.3s ease, transform 0.3s ease",
+            }}
+          >
+            {catMessage && (
+              <p className="text-[11px] text-carbon font-medium leading-snug text-center">{catMessage}</p>
+            )}
+          </div>
+          <button
+            onClick={handleCatClick}
+            className="animate-float active:scale-95 transition-transform duration-100 outline-none focus:outline-none"
+            aria-label="acariciar al gato"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={
+                mindPhase === "recording"
+                  ? "/cat-curious.png"
+                  : energy === "low"
+                  ? "/cat-sleeping.png"
+                  : energy === "medium"
+                  ? "/cat-idle.png"
+                  : energy === "high"
+                  ? "/cat-neutral.png"
+                  : "/cat-neutral.png"
+              }
+              alt="gato"
+              style={{ height: 160, width: "auto", mixBlendMode: "multiply" }}
+            />
+          </button>
+        </div>
+
         {/* Pending thingys */}
         <section className="px-5 mb-5">
           {pending.length > 0 && (
@@ -454,9 +567,6 @@ export default function HomePage() {
           )}
         </section>
       </main>
-
-      {/* Cat companion — fixed corner */}
-      <CatCompanion energy={energy as EnergyLevel} />
 
       {/* Add sheet */}
       {showSheet && (
