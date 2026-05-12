@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from "react";
-import { Thingy, Chunk, EnergyLevel, createThingy, XP_REWARDS, PROOF_BONUS_XP } from "@/lib/missions";
+import { Thingy, Chunk, Bite, EnergyLevel, createThingy, XP_REWARDS, PROOF_BONUS_XP } from "@/lib/missions";
 import { supabase } from "@/lib/supabase";
 
 interface AppState {
@@ -17,7 +17,7 @@ interface AppContextValue extends AppState {
   addThingy: (
     text: string,
     energyLevel: EnergyLevel,
-    opts?: { isDaily?: boolean; requirePhotoProof?: boolean; deadline?: string }
+    opts?: { isDaily?: boolean; requirePhotoProof?: boolean; deadline?: string; bites?: Bite[] }
   ) => Thingy;
   updateThingy: (id: string, updates: Partial<Thingy>) => void;
   completeThingy: (id: string, proofMessage?: string) => void;
@@ -47,6 +47,7 @@ function rowToThingy(row: DbRow): Thingy {
     deadline: (row.deadline as string | null) ?? undefined,
     chunksEnabled: (row.chunks_enabled as boolean | null) ?? false,
     chunks: (row.chunks as Chunk[] | null) ?? [],
+    bites: (row.bites as Bite[] | null) ?? [],
   };
 }
 
@@ -69,6 +70,7 @@ function thingyToRow(t: Thingy, userId: string): DbRow {
     deadline: t.deadline ?? null,
     chunks_enabled: t.chunksEnabled,
     chunks: t.chunks,
+    bites: t.bites,
   };
 }
 
@@ -88,6 +90,7 @@ function updatesToRow(updates: Partial<Thingy>): DbRow {
   if ("deadline" in updates)          row.deadline            = updates.deadline ?? null;
   if ("chunksEnabled" in updates)     row.chunks_enabled      = updates.chunksEnabled;
   if ("chunks" in updates)            row.chunks              = updates.chunks;
+  if ("bites" in updates)             row.bites               = updates.bites;
   return row;
 }
 

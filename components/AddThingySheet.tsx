@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import MicButton from "@/components/MicButton";
-import { EnergyLevel, suggestEnergy } from "@/lib/missions";
+import { EnergyLevel, suggestEnergy, Bite } from "@/lib/missions";
 
 interface Props {
   prefillText?: string;
@@ -10,10 +10,11 @@ interface Props {
   prefillIsDaily?: boolean;
   prefillDeadline?: string;
   prefillRequirePhoto?: boolean;
+  prefillBites?: Bite[];
   onSave: (
     text: string,
     energy: EnergyLevel,
-    opts: { isDaily: boolean; requirePhotoProof: boolean; deadline?: string }
+    opts: { isDaily: boolean; requirePhotoProof: boolean; deadline?: string; bites: Bite[] }
   ) => void;
   onClose: () => void;
   onDelete?: () => void;
@@ -25,7 +26,7 @@ const ENERGY_COLORS: Record<EnergyLevel, string> = {
   high:   "#C8D0BB",
 };
 
-export default function AddThingySheet({ prefillText, defaultEnergy, prefillIsDaily, prefillDeadline, prefillRequirePhoto, onSave, onClose, onDelete }: Props) {
+export default function AddThingySheet({ prefillText, defaultEnergy, prefillIsDaily, prefillDeadline, prefillRequirePhoto, prefillBites, onSave, onClose, onDelete }: Props) {
   const [text, setText] = useState(prefillText ?? "");
   const [energy, setEnergy] = useState<EnergyLevel>(defaultEnergy ?? "medium");
   const [isDaily, setIsDaily] = useState(prefillIsDaily ?? false);
@@ -33,6 +34,8 @@ export default function AddThingySheet({ prefillText, defaultEnergy, prefillIsDa
   const [hasDeadline, setHasDeadline] = useState(!!prefillDeadline);
   const [deadline, setDeadline] = useState(prefillDeadline ?? "");
   const [catSuggested, setCatSuggested] = useState(false);
+  const [bites, setBites] = useState<Bite[]>(prefillBites ?? []);
+  const [newBiteText, setNewBiteText] = useState("");
 
   // If prefill text arrives in add mode, auto-suggest energy
   useEffect(() => {
@@ -53,6 +56,32 @@ export default function AddThingySheet({ prefillText, defaultEnergy, prefillIsDa
     setTimeout(() => setCatSuggested(false), 2500);
   };
 
+  const handleAddBite = () => {
+    const trimmed = newBiteText.trim();
+    if (!trimmed || bites.length >= 10) return;
+    const bite: Bite = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      text: trimmed,
+      completed: false,
+    };
+    setBites((prev) => [...prev, bite]);
+    setNewBiteText("");
+  };
+
+  const handleRemoveBite = (id: string) => {
+    setBites((prev) => prev.filter((b) => b.id !== id));
+  };
+
+  const handleMoveBite = (idx: number, dir: -1 | 1) => {
+    setBites((prev) => {
+      const next = [...prev];
+      const target = idx + dir;
+      if (target < 0 || target >= next.length) return prev;
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+  };
+
   const handleSave = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -60,6 +89,7 @@ export default function AddThingySheet({ prefillText, defaultEnergy, prefillIsDa
       isDaily,
       requirePhotoProof: requirePhoto,
       deadline: hasDeadline && deadline ? deadline : undefined,
+      bites,
     });
   };
 
@@ -74,7 +104,7 @@ export default function AddThingySheet({ prefillText, defaultEnergy, prefillIsDa
       />
 
       {/* Sheet */}
-      <div className="relative w-full max-w-lg bg-cream rounded-t-3xl px-5 pt-4 pb-10 animate-scale-in">
+      <div className="relative w-full max-w-lg bg-cream rounded-t-3xl px-5 pt-4 pb-10 animate-scale-in max-h-[90dvh] overflow-y-auto">
         {/* Handle */}
         <div className="w-10 h-1 bg-cream-dark rounded-full mx-auto mb-5" />
 
@@ -145,7 +175,7 @@ export default function AddThingySheet({ prefillText, defaultEnergy, prefillIsDa
         </div>
 
         {/* Toggles */}
-        <div className="flex flex-col gap-2 mb-6">
+        <div className="flex flex-col gap-2 mb-5">
           <SheetToggle
             label="daily — resets every day"
             value={isDaily}
@@ -172,6 +202,53 @@ export default function AddThingySheet({ prefillText, defaultEnergy, prefillIsDa
             value={requirePhoto}
             onChange={setRequirePhoto}
           />
+        </div>
+
+        {/* Bites / steps */}
+        <div className="mb-6">
+          <p className="text-xs font-semibold text-carbon-soft uppercase tracking-wide mb-2.5">bites · pasos</p>
+
+          {bites.map((bite, idx) => (
+            <div key={bite.id} className="flex items-center gap-2 bg-white rounded-2xl px-3 py-2.5 shadow-sm mb-1.5">
+              <span className="flex-1 text-sm text-carbon leading-snug">{bite.text}</span>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button
+                  onClick={() => handleMoveBite(idx, -1)}
+                  disabled={idx === 0}
+                  className="w-7 h-7 flex items-center justify-center text-carbon-soft/40 hover:text-carbon-soft/70 disabled:opacity-20 active:scale-90 transition-all text-xs"
+                >↑</button>
+                <button
+                  onClick={() => handleMoveBite(idx, 1)}
+                  disabled={idx === bites.length - 1}
+                  className="w-7 h-7 flex items-center justify-center text-carbon-soft/40 hover:text-carbon-soft/70 disabled:opacity-20 active:scale-90 transition-all text-xs"
+                >↓</button>
+                <button
+                  onClick={() => handleRemoveBite(bite.id)}
+                  className="w-7 h-7 flex items-center justify-center text-carbon-soft/30 hover:text-carbon-soft/60 active:scale-90 transition-all text-lg leading-none"
+                >×</button>
+              </div>
+            </div>
+          ))}
+
+          {bites.length < 10 && (
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                value={newBiteText}
+                onChange={(e) => setNewBiteText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddBite()}
+                placeholder="agregar paso…"
+                className="flex-1 bg-white rounded-2xl px-4 py-2.5 text-sm text-carbon placeholder:text-carbon-soft/40 outline-none shadow-sm border-none"
+              />
+              <button
+                onClick={handleAddBite}
+                disabled={!newBiteText.trim()}
+                className="w-9 h-9 rounded-full bg-carbon text-white text-base font-light flex items-center justify-center shrink-0 disabled:opacity-25 active:scale-95 transition-transform duration-100"
+              >+</button>
+            </div>
+          )}
+          {bites.length >= 10 && (
+            <p className="text-[10px] text-carbon-soft/35 mt-1">máx 10 pasos</p>
+          )}
         </div>
 
         {/* Save */}

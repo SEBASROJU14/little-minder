@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Thingy, Chunk, EnergyLevel, isNearDeadline, isPastDeadline, formatDeadline, calcChunkProgress } from "@/lib/missions";
+import { Thingy, Chunk, EnergyLevel, isNearDeadline, isPastDeadline, formatDeadline, calcChunkProgress, calcBiteProgress } from "@/lib/missions";
 import ProgressCircle from "./ProgressCircle";
 import EnergyPill from "./EnergyPill";
 import AddThingySheet from "./AddThingySheet";
+import ThingyDetailSheet from "./ThingyDetailSheet";
 
 interface Props {
   thingy: Thingy;
@@ -17,20 +18,41 @@ const todayStr = () => new Date().toISOString().split("T")[0];
 
 export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: Props) {
   const { id, text, energyLevel, completed, progress, isDaily, requirePhotoProof,
-    proofMessage, deadline, chunksEnabled, chunks } = thingy;
+    proofMessage, deadline, chunksEnabled, chunks, bites } = thingy;
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [newChunkText, setNewChunkText] = useState("");
 
-  // ── Long press → edit ───────────────────────────────────────────────────────
+  // ── Tap / Long press ────────────────────────────────────────────────────────
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
 
   const handleCardPointerDown = (e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest("button, input, textarea")) return;
-    longPressTimer.current = setTimeout(() => setShowEdit(true), 500);
+    longPressFired.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      longPressTimer.current = null;
+      setShowEdit(true);
+    }, 500);
+  };
+
+  const handleCardPointerUp = (e: React.PointerEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button, input, textarea")) {
+      cancelLongPress();
+      return;
+    }
+    if (longPressTimer.current) {
+      // Timer still running → tap (< 500ms)
+      cancelLongPress();
+      setShowDetail(true);
+    }
+    // If timer is null → long press already fired, do nothing
   };
 
   const cancelLongPress = () => {
@@ -45,14 +67,17 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
   const nearDeadline = isNearDeadline(deadline);
   const pastDeadline = isPastDeadline(deadline);
 
-  const displayProgress = chunksEnabled && chunks.length > 0
+  const hasBites = bites.length > 0;
+  const displayProgress = hasBites
+    ? calcBiteProgress(bites)
+    : chunksEnabled && chunks.length > 0
     ? calcChunkProgress(chunks)
     : progress;
 
   // --- progress handlers ---
 
   const handleManualProgress = (next: number) => {
-    if (chunksEnabled) return;
+    if (chunksEnabled || hasBites) return;
     if (next === 100) {
       onComplete(thingy);
     } else {
@@ -130,17 +155,17 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
           : { background: "linear-gradient(150deg,#EDD9B5 0%,#E3CDA3 100%)", boxShadow: "0 2px 8px rgba(44,36,22,0.12), 0 1px 2px rgba(44,36,22,0.06)" }
       }
       onPointerDown={handleCardPointerDown}
-      onPointerUp={cancelLongPress}
+      onPointerUp={handleCardPointerUp}
       onPointerLeave={cancelLongPress}
       onPointerCancel={cancelLongPress}
     >
       <div className="flex items-start gap-3">
-        {/* Progress circle — read-only when chunks active */}
+        {/* Progress circle — read-only when chunks or bites active */}
         <div className="mt-0.5">
           <ProgressCircle
             progress={displayProgress}
-            onProgress={completed || chunksEnabled ? undefined : handleManualProgress}
-            readonly={completed || chunksEnabled}
+            onProgress={completed || chunksEnabled || hasBites ? undefined : handleManualProgress}
+            readonly={completed || chunksEnabled || hasBites}
             size={44}
           />
         </div>
@@ -156,6 +181,13 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
 
           {proofMessage && (
             <p className="text-xs text-moss italic mt-1">{proofMessage}</p>
+          )}
+
+          {/* Bites summary — shown when bites exist */}
+          {hasBites && !completed && (
+            <p className="text-[11px] text-carbon-soft/50 mt-1">
+              {bites.filter((b) => b.completed).length}/{bites.length} pasos
+            </p>
           )}
 
           {/* Attribute pills */}
@@ -188,7 +220,7 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
               label={requirePhotoProof ? "📷 on" : "📷"}
               title="toggle photo proof"
             />
-            {!completed && (
+            {!completed && !hasBites && (
               <AttributePill
                 active={chunksEnabled}
                 activeStyle="bg-lavender-light text-lavender-dark"
@@ -213,7 +245,7 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
           )}
 
           {/* Chunks section */}
-          {chunksEnabled && (
+          {chunksEnabled && !hasBites && (
             <div className="mt-3 pt-3 border-t border-cream-dark/80">
               {chunks.length === 0 && (
                 <p className="text-xs text-carbon-soft/40 mb-2">add steps below</p>
@@ -293,7 +325,17 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
 
     </div>
 
-    {/* Renderizados fuera del div con animate-fade-in para evitar stacking context */}
+    {/* Modals outside the animated div (stacking context fix) */}
+    {showDetail && (
+      <ThingyDetailSheet
+        thingy={thingy}
+        onUpdate={onUpdate}
+        onComplete={onComplete}
+        onEdit={() => { setShowDetail(false); setShowEdit(true); }}
+        onClose={() => setShowDetail(false)}
+      />
+    )}
+
     {showEdit && (
       <AddThingySheet
         prefillText={text}
@@ -301,6 +343,7 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
         prefillIsDaily={isDaily}
         prefillDeadline={deadline}
         prefillRequirePhoto={requirePhotoProof}
+        prefillBites={bites}
         onSave={(newText, newEnergy, opts) => {
           onUpdate(id, {
             text: newText,
@@ -308,6 +351,7 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
             isDaily: opts.isDaily,
             requirePhotoProof: opts.requirePhotoProof,
             deadline: opts.deadline,
+            bites: opts.bites,
           });
           setShowEdit(false);
         }}
@@ -375,4 +419,3 @@ function AttributePill({
     </button>
   );
 }
-

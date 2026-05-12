@@ -6,6 +6,12 @@ export interface Chunk {
   completed: boolean;
 }
 
+export interface Bite {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
 export interface Thingy {
   id: string;
   text: string;
@@ -23,12 +29,20 @@ export interface Thingy {
   deadline?: string; // ISO date string (YYYY-MM-DD)
   chunksEnabled: boolean;
   chunks: Chunk[];
+  bites: Bite[];
 }
 
 /** Compute snapped progress (0/25/50/75/100) from chunk completion ratio */
 export function calcChunkProgress(chunks: Chunk[]): number {
   if (chunks.length === 0) return 0;
   const pct = (chunks.filter((c) => c.completed).length / chunks.length) * 100;
+  return Math.min(100, Math.round(pct / 25) * 25);
+}
+
+/** Compute snapped progress (0/25/50/75/100) from bite completion ratio */
+export function calcBiteProgress(bites: Bite[]): number {
+  if (bites.length === 0) return 0;
+  const pct = (bites.filter((b) => b.completed).length / bites.length) * 100;
   return Math.min(100, Math.round(pct / 25) * 25);
 }
 
@@ -90,6 +104,7 @@ export function createThingy(
     isDaily?: boolean;
     requirePhotoProof?: boolean;
     deadline?: string;
+    bites?: Bite[];
   } = {}
 ): Thingy {
   return {
@@ -105,6 +120,7 @@ export function createThingy(
     deadline: options.deadline,
     chunksEnabled: false,
     chunks: [],
+    bites: options.bites ?? [],
   };
 }
 

@@ -12,7 +12,7 @@ import ProofModal from "@/components/ProofModal";
 import MicButton from "@/components/MicButton";
 import MindNoteCard from "@/components/MindNoteCard";
 import PhotoPickerSheet from "@/components/PhotoPickerSheet";
-import { Thingy, EnergyLevel, isNearDeadline, isPastDeadline } from "@/lib/missions";
+import { Thingy, Bite, EnergyLevel, isNearDeadline, isPastDeadline } from "@/lib/missions";
 
 // ── Mind Note inline recording ────────────────────────────────────────────────
 
@@ -272,7 +272,7 @@ export default function HomePage() {
   const handleSave = (
     text: string,
     lvl: EnergyLevel,
-    opts: { isDaily: boolean; requirePhotoProof: boolean; deadline?: string }
+    opts: { isDaily: boolean; requirePhotoProof: boolean; deadline?: string; bites: Bite[] }
   ) => {
     addThingy(text, lvl, opts);
     setShowSheet(false);
@@ -302,6 +302,7 @@ export default function HomePage() {
       completed: false, progress: 0, completedAt: undefined,
       lastCompletedDate: undefined,
       chunks: t.chunks.map((c) => ({ ...c, completed: false })),
+      bites: t.bites.map((b) => ({ ...b, completed: false })),
     });
   };
 
