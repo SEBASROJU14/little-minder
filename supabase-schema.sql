@@ -31,7 +31,22 @@ INSERT INTO user_xp (user_id, xp)
 VALUES ('default_user', 0)
 ON CONFLICT (user_id) DO NOTHING;
 
+-- ─── MIND NOTES ─────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS mind_notes (
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    TEXT        NOT NULL,
+  text       TEXT,
+  photo_url  TEXT,
+  thingy_id  TEXT        REFERENCES thingys(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Migration for existing mind_notes tables (safe to run multiple times):
+-- ALTER TABLE mind_notes ADD COLUMN IF NOT EXISTS thingy_id TEXT REFERENCES thingys(id) ON DELETE SET NULL;
+
 -- ─── SEGURIDAD (sin auth por ahora) ────────────────────────────────────────
 
 ALTER TABLE thingys DISABLE ROW LEVEL SECURITY;
 ALTER TABLE user_xp DISABLE ROW LEVEL SECURITY;
+ALTER TABLE mind_notes DISABLE ROW LEVEL SECURITY;

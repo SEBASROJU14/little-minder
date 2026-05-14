@@ -4,6 +4,7 @@ interface NotePayload {
   text: string | null;
   photo_url: string | null;
   created_at: string;
+  thingy_title?: string | null;
 }
 
 export const maxDuration = 30;
@@ -44,8 +45,9 @@ export async function POST(request: NextRequest) {
           month: "short",
         });
         const hasPhoto = n.photo_url ? " 📷" : "";
+        const thingyCtx = n.thingy_title ? ` 📎 ${n.thingy_title}` : "";
         const content = n.text ?? "(sin texto)";
-        return `[${i + 1}] ${date}${hasPhoto}\n${content}`;
+        return `[${i + 1}] ${date}${hasPhoto}${thingyCtx}\n${content}`;
       })
       .join("\n\n");
 

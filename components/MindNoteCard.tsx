@@ -9,9 +9,10 @@ interface Props {
   onDelete: (id: string) => void;
   onUpdateText: (id: string, text: string) => Promise<void>;
   onAddPhoto: (id: string, file: File) => Promise<void>;
+  thingyTitle?: string;
 }
 
-export default function MindNoteCard({ note, onDelete, onUpdateText, onAddPhoto }: Props) {
+export default function MindNoteCard({ note, onDelete, onUpdateText, onAddPhoto, thingyTitle }: Props) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(note.text ?? "");
   const [showPhotoSheet, setShowPhotoSheet] = useState(false);
@@ -74,7 +75,14 @@ export default function MindNoteCard({ note, onDelete, onUpdateText, onAddPhoto 
       onPointerCancel={cancelLongPress}
     >
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] text-carbon-soft/40 mb-1">{date}</p>
+        <div className="flex items-center gap-1.5 mb-1">
+          <p className="text-[10px] text-carbon-soft/40">{date}</p>
+          {thingyTitle && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-carbon-soft/50 bg-cream-dark rounded-full px-1.5 py-0.5 leading-none max-w-[120px] truncate">
+              📎 <span className="truncate">{thingyTitle}</span>
+            </span>
+          )}
+        </div>
 
         {editing ? (
           <textarea

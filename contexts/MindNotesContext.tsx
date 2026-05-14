@@ -18,13 +18,14 @@ export interface MindNote {
   text: string | null;
   photo_url: string | null;
   created_at: string;
+  thingy_id: string | null;
 }
 
 interface MindNotesContextValue {
   notes: MindNote[];
   isLoaded: boolean;
   saveError: string | null;
-  addNote: (text: string | null, photoFile?: File) => Promise<string | null>;
+  addNote: (text: string | null, photoFile?: File, thingyId?: string) => Promise<string | null>;
   deleteNote: (id: string) => Promise<void>;
   updateNoteText: (id: string, text: string) => Promise<void>;
   addPhotoToNote: (id: string, file: File) => Promise<void>;
@@ -78,7 +79,7 @@ export function MindNotesProvider({ children }: { children: ReactNode }) {
   }, [userId]);
 
   // Returns the real note ID on success, null on failure
-  const addNote = useCallback(async (text: string | null, photoFile?: File): Promise<string | null> => {
+  const addNote = useCallback(async (text: string | null, photoFile?: File, thingyId?: string): Promise<string | null> => {
     setSaveError(null);
 
     // Optimistic update — note appears immediately while Supabase runs in background
@@ -88,6 +89,7 @@ export function MindNotesProvider({ children }: { children: ReactNode }) {
       text: text || null,
       photo_url: null,
       created_at: new Date().toISOString(),
+      thingy_id: thingyId ?? null,
     };
     setNotes((prev) => [tempNote, ...prev]);
 
@@ -121,7 +123,7 @@ export function MindNotesProvider({ children }: { children: ReactNode }) {
 
     const { data, error } = await supabase
       .from("mind_notes")
-      .insert({ user_id: uid, text: text || null, photo_url })
+      .insert({ user_id: uid, text: text || null, photo_url, thingy_id: thingyId ?? null })
       .select()
       .single();
 

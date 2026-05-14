@@ -180,7 +180,12 @@ export default function HomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: transcript,
-          notes: sortedNotes.map((n) => ({ text: n.text, photo_url: n.photo_url, created_at: n.created_at })),
+          notes: sortedNotes.map((n) => ({
+            text: n.text,
+            photo_url: n.photo_url,
+            created_at: n.created_at,
+            thingy_title: n.thingy_id ? thingys.find((t) => t.id === n.thingy_id)?.text ?? null : null,
+          })),
         }),
       });
       const data = (await res.json()) as { answer?: string };
@@ -563,6 +568,7 @@ export default function HomePage() {
                 onDelete={deleteNote}
                 onUpdateText={updateNoteText}
                 onAddPhoto={addPhotoToNote}
+                thingyTitle={note.thingy_id ? thingys.find((t) => t.id === note.thingy_id)?.text : undefined}
               />
             ))
           )}

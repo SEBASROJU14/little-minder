@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Thingy, Bite, calcBiteProgress } from "@/lib/missions";
+import { useMindNotes } from "@/contexts/MindNotesContext";
+import { ThingyNoteButton } from "./ThingyCard";
 
 interface Props {
   thingy: Thingy;
@@ -13,6 +15,8 @@ interface Props {
 
 export default function ThingyDetailSheet({ thingy, onUpdate, onComplete, onEdit, onClose }: Props) {
   const [bites, setBites] = useState<Bite[]>(thingy.bites);
+  const { notes, deleteNote } = useMindNotes();
+  const thingyNotes = notes.filter((n) => n.thingy_id === thingy.id);
 
   const handleToggle = (id: string) => {
     if (thingy.completed) return;
@@ -93,6 +97,45 @@ export default function ThingyDetailSheet({ thingy, onUpdate, onComplete, onEdit
             ))}
           </div>
         )}
+
+        {/* Attached notes section */}
+        <div className="mt-5 pt-4 border-t border-cream-dark/60">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] font-semibold text-carbon-soft/40 uppercase tracking-wider">
+              notas{thingyNotes.length > 0 ? ` · ${thingyNotes.length}` : ""}
+            </p>
+            {!thingy.completed && <ThingyNoteButton thingyId={thingy.id} />}
+          </div>
+
+          {thingyNotes.length === 0 ? (
+            <p className="text-xs text-carbon-soft/35 text-center py-3">
+              sin notas — toca 🎙 para dictar
+            </p>
+          ) : (
+            <div>
+              {thingyNotes.map((note) => (
+                <div
+                  key={note.id}
+                  className="py-2.5 border-b border-cream-dark/50 last:border-0 flex items-start justify-between gap-2"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] text-carbon-soft/35 mb-0.5">
+                      {new Date(note.created_at).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                    </p>
+                    <p className="text-sm text-carbon leading-snug">{note.text}</p>
+                  </div>
+                  <button
+                    onClick={() => void deleteNote(note.id)}
+                    className="shrink-0 text-carbon-soft/20 hover:text-carbon-soft/50 text-lg leading-none mt-0.5 transition-colors"
+                    aria-label="eliminar nota"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

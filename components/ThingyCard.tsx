@@ -6,6 +6,7 @@ import ProgressCircle from "./ProgressCircle";
 import EnergyPill from "./EnergyPill";
 import AddThingySheet from "./AddThingySheet";
 import ThingyDetailSheet from "./ThingyDetailSheet";
+import { useMindNotes } from "@/contexts/MindNotesContext";
 
 interface Props {
   thingy: Thingy;
@@ -230,6 +231,7 @@ export default function ThingyCard({ thingy, onUpdate, onComplete, onDoAgain }: 
                 title="toggle steps/chunks"
               />
             )}
+            {!completed && <ThingyNoteButton thingyId={id} />}
           </div>
 
           {/* Inline date picker */}
@@ -416,6 +418,90 @@ function AttributePill({
       `}
     >
       {label}
+    </button>
+  );
+}
+
+function getMindMime(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+  return types.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
+}
+
+export function ThingyNoteButton({ thingyId }: { thingyId: string }) {
+  const { addNote } = useMindNotes();
+  const [state, setState] = useState<"idle" | "recording" | "loading" | "saved">("idle");
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  const handlePress = (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (state === "recording") {
+      recorderRef.current?.stop();
+      return;
+    }
+    if (state !== "idle") return;
+
+    void navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      const mimeType = getMindMime();
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      recorderRef.current = recorder;
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: mimeType || "audio/mp4" });
+        chunksRef.current = [];
+        recorderRef.current = null;
+
+        if (blob.size < 1000) { setState("idle"); return; }
+
+        const ext = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : "webm";
+        setState("loading");
+
+        const form = new FormData();
+        form.append("audio", blob, `recording.${ext}`);
+
+        fetch("/api/transcribe-note", { method: "POST", body: form })
+          .then((r) => r.json() as Promise<{ text?: string }>)
+          .then(async ({ text }) => {
+            if (text?.trim()) {
+              await addNote(text.trim(), undefined, thingyId);
+              setState("saved");
+              setTimeout(() => setState("idle"), 2500);
+            } else {
+              setState("idle");
+            }
+          })
+          .catch(() => setState("idle"));
+      };
+
+      recorder.start();
+      setState("recording");
+    }).catch(() => setState("idle"));
+  };
+
+  return (
+    <button
+      onClick={handlePress}
+      disabled={state === "loading"}
+      title="agregar nota de voz"
+      className={`
+        inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium
+        transition-all duration-150 active:scale-95
+        ${state === "recording" ? "bg-rose-soft text-red-600" :
+          state === "loading" ? "text-carbon-soft/35 cursor-wait" :
+          state === "saved" ? "bg-[#4A5240]/10 text-[#4A5240]" :
+          "text-carbon-soft/35"}
+      `}
+    >
+      {state === "idle" && "🎙"}
+      {state === "recording" && <><span className="w-1.5 h-1.5 bg-red-500 rounded-sm animate-pulse" /><span>detener</span></>}
+      {state === "loading" && <span className="w-3 h-3 border border-carbon-soft/40 border-t-carbon rounded-full animate-spin" />}
+      {state === "saved" && "📎 guardado"}
     </button>
   );
 }
